@@ -1,0 +1,105 @@
+GREENFIELD UNIVERSITY - B.TECH COMPUTER SCIENCE AND ENGINEERING SYLLABUS 2025-26
+Department: Computer Science and Engineering
+Programme: B.Tech CSE | Regulation: 2023
+
+COURSE: DATA STRUCTURES (CS2101)
+Credits: 4 | Semester: 2 | Category: Core
+Prerequisites: Programming in C (CS1101). Students must know arrays pointers and functions before taking this course.
+
+UNIT 1: Arrays and Linked Lists
+Introduction to Data Structures and Abstract Data Types.
+Arrays covering 1D and 2D operations and applications.
+Singly Linked List covering insertion deletion and traversal.
+Doubly Linked List and Circular Linked List.
+
+UNIT 2: Stacks and Queues
+Stack using array and linked list representation.
+Applications of stack include expression evaluation and recursion simulation.
+Queue covering linear circular and priority queue.
+Deque and its applications.
+
+UNIT 3: Trees
+Binary Trees covering properties and traversals including inorder preorder and postorder.
+Binary Search Tree covering search insertion and deletion.
+AVL Trees covering rotations and balancing.
+Heap covering max-heap min-heap heapify and heap sort.
+
+UNIT 4: Graphs
+Graph representations using adjacency matrix and adjacency list.
+BFS and DFS traversals.
+Shortest Path algorithms including Dijkstra and Bellman-Ford.
+Minimum Spanning Tree using Kruskal and Prim algorithms.
+
+UNIT 5: Hashing and Sorting
+Hash functions and collision resolution using chaining and open addressing.
+Sorting algorithms including Quick sort Merge sort and Radix sort.
+Comparison of sorting algorithms by time and space complexity.
+
+Textbooks:
+Data Structures and Algorithm Analysis in C by Mark Allen Weiss.
+Introduction to Algorithms by Cormen Leiserson Rivest and Stein.
+
+COURSE: OPERATING SYSTEMS (CS3201)
+Credits: 4 | Semester: 3 | Category: Core
+Prerequisites: Computer Organization (CS2201) and Data Structures (CS2101).
+
+UNIT 1: Introduction to OS
+Operating System functions and types including batch time-sharing real-time and distributed.
+System calls and OS structure covering monolithic microkernel and layered.
+Process concept covering PCB process states and context switching.
+
+UNIT 2: Process Management
+Process scheduling algorithms including FCFS SJF Round Robin and Priority Scheduling.
+Interprocess communication using shared memory and message passing.
+Threads covering user-level and kernel-level and multithreading models.
+
+UNIT 3: Synchronization and Deadlocks
+Critical section problem and Peterson solution.
+Semaphores mutex locks and monitors.
+Deadlock covering conditions prevention avoidance using Banker algorithm and detection.
+
+UNIT 4: Memory Management
+Contiguous allocation paging and segmentation.
+Virtual memory covering demand paging and page replacement algorithms including FIFO LRU and Optimal.
+Thrashing and working set model.
+
+UNIT 5: File and IO Systems
+File concepts access methods and directory structures.
+File system implementation covering FAT inode and NTFS overview.
+Disk scheduling covering FCFS SSTF SCAN and C-SCAN.
+
+Textbooks:
+Operating System Concepts by Silberschatz Galvin and Gagne.
+Modern Operating Systems by Andrew Tanenbaum.
+
+COURSE: DATABASE MANAGEMENT SYSTEMS (CS3301)
+Credits: 4 | Semester: 3 | Category: Core
+Prerequisites: Data Structures (CS2101).
+
+UNIT 1: Introduction to Databases
+Database vs File system and DBMS architecture.
+Data models covering relational hierarchical network and object-oriented.
+ER model covering entities attributes relationships and ER diagram.
+
+UNIT 2: Relational Model and SQL
+Relational algebra and calculus.
+SQL covering DDL DML DCL and TCL commands.
+Joins subqueries views indexes and stored procedures.
+
+UNIT 3: Database Design
+Functional dependencies and normalization from 1NF to BCNF.
+Decomposition covering lossless join and dependency preservation.
+
+UNIT 4: Transaction Management
+ACID properties and transaction states.
+Concurrency control using locking protocols and timestamp ordering.
+Recovery using log-based recovery and checkpoints.
+
+UNIT 5: Advanced Databases
+Introduction to NoSQL covering document key-value column-family and graph databases.
+Distributed databases covering fragmentation replication and CAP theorem.
+Data warehousing and OLAP basics.
+
+Textbooks:
+Database System Concepts by Silberschatz Korth and Sudarshan.
+Fundamentals of Database Systems by Elmasri and Navathe.
