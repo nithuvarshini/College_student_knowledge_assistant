@@ -49,6 +49,7 @@ class QueryRequest(BaseModel):
     doc_type_filter: Optional[str] = None
     year_filter: Optional[str] = None
     top_k: int = 5
+    green_mode: bool = True
 
     model_config = {
         "json_schema_extra": {
@@ -58,6 +59,7 @@ class QueryRequest(BaseModel):
                 "doc_type_filter": None,
                 "year_filter": "2025",
                 "top_k": 5,
+                "green_mode": True,
             }
         }
     }
@@ -68,9 +70,16 @@ class QueryRequest(BaseModel):
 @app.get("/", tags=["Health"])
 def root():
     return {
-        "message": "College Student Knowledge Assistant is running!",
+        "message": "College Student Knowledge Assistant (Green-Optimized) is running!",
         "swagger_ui": "/docs",
-        "endpoints": ["POST /query", "POST /upload", "GET /stats", "POST /reindex", "GET /doc-types"],
+        "endpoints": [
+            "POST /query",
+            "POST /upload",
+            "GET /stats",
+            "GET /green-stats",
+            "POST /reindex",
+            "GET /doc-types",
+        ],
     }
 
 
@@ -82,11 +91,13 @@ def health():
 @app.post("/query", tags=["RAG"])
 def query(request: QueryRequest):
     """
-    Ask a student question. Returns an answer grounded in official college documents with citations.
+    Ask a student question. Returns an answer grounded in official college documents with citations
+    along with GSF-compliant SCI (Software Carbon Intensity) energy and emissions metrics.
 
     - search_mode: hybrid (recommended) | semantic | keyword
     - doc_type_filter: handbook | syllabus | placement | fees_scholarships | library | admin | calendar
     - year_filter: e.g. 2025
+    - green_mode: true (uses LRU caching & lean context) | false (baseline unoptimized)
     """
     if rag is None:
         raise HTTPException(status_code=503, detail="RAG pipeline not ready.")
@@ -101,6 +112,7 @@ def query(request: QueryRequest):
         doc_type_filter=request.doc_type_filter,
         year_filter=request.year_filter,
         top_k=request.top_k,
+        green_mode=request.green_mode,
     )
 
     if "error" in result:
@@ -140,6 +152,14 @@ def stats():
     if rag is None:
         raise HTTPException(status_code=503, detail="RAG pipeline not ready.")
     return rag.get_stats()
+
+
+@app.get("/green-stats", tags=["Sustainability"])
+def green_stats():
+    """Returns real-time Green Computing KPIs and GSF Software Carbon Intensity (SCI) metrics."""
+    if rag is None:
+        raise HTTPException(status_code=503, detail="RAG pipeline not ready.")
+    return rag.green_tracker.get_summary()
 
 
 @app.post("/reindex", tags=["Admin"])

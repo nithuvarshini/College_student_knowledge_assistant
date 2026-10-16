@@ -1,0 +1,196 @@
+{
+  "benchmark_metadata": {
+    "timestamp": "2026-10-16 20:37:43",
+    "queries_evaluated": 10,
+    "cpu_tdp_watts": 15.0,
+    "grid_intensity_g_kwh": 710.0,
+    "sci_standard": "GSF SCI = ((E * I) + M) / R"
+  },
+  "baseline_summary": {
+    "average_latency_ms": 3541.75,
+    "total_duration_sec": 35.42,
+    "total_energy_kwh": 0.00015569,
+    "total_sci_g_co2": 0.194838,
+    "avg_sci_per_query_g": 0.019484
+  },
+  "green_optimized_summary": {
+    "average_latency_ms": 2865.98,
+    "total_duration_sec": 28.67,
+    "total_energy_kwh": 0.00014036,
+    "total_sci_g_co2": 0.167867,
+    "avg_sci_per_query_g": 0.016787,
+    "cache_hits": 3,
+    "cache_hit_rate_pct": 30.0
+  },
+  "percentage_improvements": {
+    "latency_reduction_pct": 19.08,
+    "energy_reduction_pct": 9.85,
+    "sci_carbon_reduction_pct": 13.84
+  },
+  "query_details": {
+    "baseline": [
+      {
+        "query_idx": 1,
+        "question": "What is the minimum attendance required?",
+        "latency_ms": 4955.07,
+        "energy_kwh": 2.058e-05,
+        "sci_score": 0.026408,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 2,
+        "question": "When does the next semester start?",
+        "latency_ms": 3094.42,
+        "energy_kwh": 1.378e-05,
+        "sci_score": 0.017151,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 3,
+        "question": "What is the fine for returning a library book late?",
+        "latency_ms": 1812.73,
+        "energy_kwh": 8.33e-06,
+        "sci_score": 0.010229,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 4,
+        "question": "Am I eligible for placement with 1 backlog?",
+        "latency_ms": 1923.47,
+        "energy_kwh": 8.53e-06,
+        "sci_score": 0.010632,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 5,
+        "question": "What scholarships are available for 2nd year students?",
+        "latency_ms": 2440.5,
+        "energy_kwh": 1.061e-05,
+        "sci_score": 0.013339,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 6,
+        "question": "What are the prerequisites for Data Structures?",
+        "latency_ms": 3129.23,
+        "energy_kwh": 1.363e-05,
+        "sci_score": 0.017121,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 7,
+        "question": "How do I apply for a bonafide certificate?",
+        "latency_ms": 10777.05,
+        "energy_kwh": 4.818e-05,
+        "sci_score": 0.059859,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 8,
+        "question": "What is the minimum attendance required?",
+        "latency_ms": 2481.42,
+        "energy_kwh": 1.106e-05,
+        "sci_score": 0.01376,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 9,
+        "question": "When does the next semester start?",
+        "latency_ms": 3195.5,
+        "energy_kwh": 1.403e-05,
+        "sci_score": 0.017569,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 10,
+        "question": "What is the fine for returning a library book late?",
+        "latency_ms": 1608.14,
+        "energy_kwh": 6.96e-06,
+        "sci_score": 0.00877,
+        "is_cache_hit": false
+      }
+    ],
+    "green_optimized": [
+      {
+        "query_idx": 1,
+        "question": "What is the minimum attendance required?",
+        "latency_ms": 2514.76,
+        "energy_kwh": 1.115e-05,
+        "sci_score": 0.013901,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 2,
+        "question": "When does the next semester start?",
+        "latency_ms": 3062.07,
+        "energy_kwh": 1.342e-05,
+        "sci_score": 0.016817,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 3,
+        "question": "What is the fine for returning a library book late?",
+        "latency_ms": 1699.94,
+        "energy_kwh": 7.45e-06,
+        "sci_score": 0.009336,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 4,
+        "question": "Am I eligible for placement with 1 backlog?",
+        "latency_ms": 1891.56,
+        "energy_kwh": 8.51e-06,
+        "sci_score": 0.010545,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 5,
+        "question": "What scholarships are available for 2nd year students?",
+        "latency_ms": 2249.84,
+        "energy_kwh": 9.71e-06,
+        "sci_score": 0.01225,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 6,
+        "question": "What are the prerequisites for Data Structures?",
+        "latency_ms": 3106.77,
+        "energy_kwh": 1.367e-05,
+        "sci_score": 0.0171,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 7,
+        "question": "How do I apply for a bonafide certificate?",
+        "latency_ms": 14134.84,
+        "energy_kwh": 7.645e-05,
+        "sci_score": 0.087918,
+        "is_cache_hit": false
+      },
+      {
+        "query_idx": 8,
+        "question": "What is the minimum attendance required?",
+        "latency_ms": 0.01,
+        "energy_kwh": 0.0,
+        "sci_score": 0.0,
+        "is_cache_hit": true
+      },
+      {
+        "query_idx": 9,
+        "question": "When does the next semester start?",
+        "latency_ms": 0.01,
+        "energy_kwh": 0.0,
+        "sci_score": 0.0,
+        "is_cache_hit": true
+      },
+      {
+        "query_idx": 10,
+        "question": "What is the fine for returning a library book late?",
+        "latency_ms": 0.01,
+        "energy_kwh": 0.0,
+        "sci_score": 0.0,
+        "is_cache_hit": true
+      }
+    ]
+  }
+}

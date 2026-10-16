@@ -15,25 +15,24 @@ HF_MODEL = "google/flan-t5-base"
 class AnswerGenerator:
     def __init__(self):
         self.model_name = HF_MODEL
-        self.pipeline = None
+        self.tokenizer = None
+        self.model = None
         self._load_model()
 
     def _load_model(self):
         try:
-            from transformers import pipeline
-            logger.info("Loading LLM: %s (first run downloads ~300MB)...", self.model_name)
-            self.pipeline = pipeline(
-                "text2text-generation",
-                model=self.model_name,
-                max_new_tokens=256,
-                do_sample=False,
-            )
+            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+            logger.info("Loading LLM: %s...", self.model_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
+            self.model.eval()
             logger.info("LLM loaded successfully.")
         except Exception as e:
             logger.warning("Could not load HuggingFace model: %s. Using extractive fallback.", e)
-            self.pipeline = None
+            self.tokenizer = None
+            self.model = None
 
-    def generate(self, query: str, chunks: List[Dict]) -> Dict:
+    def generate(self, query: str, chunks: List[Dict], max_tokens: int = 150) -> Dict:
         if not chunks:
             return {
                 "answer": "I could not find any relevant information for this question in the official college documents. This topic may not be covered in the available documents. Please contact the relevant office directly or check the college portal.",
@@ -41,9 +40,10 @@ class AnswerGenerator:
                 "model": "no-results",
             }
 
+        # Green optimization: keep context focused to avoid unnecessary token processing
         context = "\n\n---\n\n".join(
             f"[Source: {c.get('filename', 'Unknown')}]\n{c.get('text', '').strip()}"
-            for c in chunks
+            for c in chunks[:3]
         )
 
         prompt = (
@@ -56,10 +56,11 @@ class AnswerGenerator:
             "Answer:"
         )
 
-        if self.pipeline:
+        if self.model and self.tokenizer:
             try:
-                output = self.pipeline(prompt, max_new_tokens=256)
-                answer = output[0]["generated_text"].strip()
+                inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+                outputs = self.model.generate(**inputs, max_new_tokens=max_tokens, do_sample=False)
+                answer = self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
                 if "Answer:" in answer:
                     answer = answer.split("Answer:")[-1].strip()
                 if answer:

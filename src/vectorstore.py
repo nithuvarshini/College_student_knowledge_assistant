@@ -28,8 +28,20 @@ class VectorStore:
             metadata={"hnsw:space": "cosine"},
         )
         logger.info("Vector store ready. Chunks indexed: %d", self.collection.count())
+        self._embedding_cache: Dict[str, List[float]] = {}
+        self.embedding_cache_hits = 0
 
     def embed(self, texts: List[str]) -> List[List[float]]:
+        # Green optimization: query embedding caching
+        if len(texts) == 1:
+            t = texts[0]
+            if t in self._embedding_cache:
+                self.embedding_cache_hits += 1
+                return [self._embedding_cache[t]]
+            vec = self.embedder.encode(texts, show_progress_bar=False).tolist()
+            if len(self._embedding_cache) < 500:
+                self._embedding_cache[t] = vec[0]
+            return vec
         return self.embedder.encode(texts, show_progress_bar=False).tolist()
 
     def index_chunks(self, chunks: List[Dict], batch_size: int = 64) -> int:
