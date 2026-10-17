@@ -104,13 +104,19 @@ def run_benchmark():
         avg_op = sum(baseline_query_records[t][q_idx]["operational_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_emb = sum(baseline_query_records[t][q_idx]["embodied_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_sci = sum(baseline_query_records[t][q_idx]["sci_score"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
+        is_measured = baseline_query_records[0][q_idx]["is_directly_measured"]
+        meas_type = baseline_query_records[0][q_idx]["measurement_type"]
         averaged_baseline.append({
             "query_idx": q_idx + 1,
             "question": BENCHMARK_QUERIES[q_idx],
             "duration_ms": round(avg_dur, 2),
             "energy_kwh": float(f"{avg_energy:.10f}"),
-            "is_directly_measured": baseline_query_records[0][q_idx]["is_directly_measured"],
-            "measurement_type": baseline_query_records[0][q_idx]["measurement_type"],
+            "directly_measured_energy_kwh": float(f"{avg_energy:.10f}") if is_measured else None,
+            "estimated_energy_kwh": float(f"{avg_energy:.10f}") if not is_measured else None,
+            "is_directly_measured": is_measured,
+            "measurement_type": meas_type,
+            "energy_status": "directly_measured" if is_measured else "modeled_estimate",
+            "energy_status_description": "Directly tracked via CodeCarbon" if is_measured else "Modeled estimate (sensor fallback)",
             "operational_co2_g": float(f"{avg_op:.8f}"),
             "embodied_co2_g": float(f"{avg_emb:.8f}"),
             "sci_score": float(f"{avg_sci:.8f}"),
@@ -157,13 +163,19 @@ def run_benchmark():
         avg_emb = sum(green_query_records[t][q_idx]["embodied_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_sci = sum(green_query_records[t][q_idx]["sci_score"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         is_hit = green_query_records[0][q_idx]["is_cache_hit"]
+        is_measured = green_query_records[0][q_idx]["is_directly_measured"]
+        meas_type = green_query_records[0][q_idx]["measurement_type"]
         averaged_green.append({
             "query_idx": q_idx + 1,
             "question": BENCHMARK_QUERIES[q_idx],
             "duration_ms": round(avg_dur, 2),
             "energy_kwh": float(f"{avg_energy:.10f}"),
-            "is_directly_measured": green_query_records[0][q_idx]["is_directly_measured"],
-            "measurement_type": green_query_records[0][q_idx]["measurement_type"],
+            "directly_measured_energy_kwh": float(f"{avg_energy:.10f}") if is_measured else None,
+            "estimated_energy_kwh": float(f"{avg_energy:.10f}") if not is_measured else None,
+            "is_directly_measured": is_measured,
+            "measurement_type": meas_type,
+            "energy_status": "directly_measured" if is_measured else "modeled_estimate",
+            "energy_status_description": "Directly tracked via CodeCarbon" if is_measured else ("Modeled estimate (sub-ms cache hit)" if is_hit else "Modeled estimate (sensor fallback)"),
             "operational_co2_g": float(f"{avg_op:.8f}"),
             "embodied_co2_g": float(f"{avg_emb:.8f}"),
             "sci_score": float(f"{avg_sci:.8f}"),
@@ -253,6 +265,10 @@ def run_benchmark():
                 "embodied_carbon_rate_g_per_sec": EMBODIED_RATE_G_PER_SEC,
                 "embodied_carbon_basis": "GSF amortized client device model (300 kg CO2eq / 4-yr lifespan)",
                 "functional_unit_R": "1 query served",
+            },
+            "energy_reporting_transparency": {
+                "direct_measurements": "Uncached queries with neural model inference are directly tracked by CodeCarbon per task.",
+                "modeled_estimates": "Sub-millisecond cache hits fall below physical hardware sensor polling intervals and are explicitly reported as modeled estimates using measured baseline idle power (~5.5W)."
             },
             "limitations": [
                 "CPU energy on Windows is estimated by CodeCarbon using CPU TDP and utilization load (Intel RAPL/EMI interface is restricted on standard Windows).",

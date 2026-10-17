@@ -19,10 +19,10 @@ In this project, the **College Student Knowledge Assistant** was augmented with 
 - **Strict SCI Formulation:** Implemented the official GSF Software Carbon Intensity metric, explicitly separating **measured energy ($E$)**, **estimated operational emissions ($O = E \times I$)**, and **assumed embodied carbon ($M$)**.
 - **Fair Empirical Benchmark:** Evaluated using automated warm-up runs, identical query sequences across multiple trials, and explicit separation of cache hits versus cache misses.
 - **Verified Results:** Across a representative 10-query student workload (30% repeated inquiries, 2-trial average), the green-optimized system achieved:
-  - **29.57% latency reduction** ($5713.2\text{ ms} \to 4024.0\text{ ms}$)
-  - **21.66% total energy reduction** ($0.00021590\text{ kWh} \to 0.00016914\text{ kWh}$)
-  - **25.37% total SCI reduction** ($0.290009\text{ gCO}_2\text{eq} \to 0.216441\text{ gCO}_2\text{eq}$)
-  - **99.87% energy reduction on repeated queries** ($7.0\text{ ms}$ latency vs $3963.7\text{ ms}$ uncached).
+  - **32.41% latency reduction** ($4880.1\text{ ms} \to 3298.3\text{ ms}$)
+  - **28.56% total energy reduction** ($0.00017390\text{ kWh} \to 0.00012423\text{ kWh}$)
+  - **30.42% total SCI reduction** ($0.240211\text{ gCO}_2\text{eq} \to 0.167131\text{ gCO}_2\text{eq}$)
+  - **99.88% energy reduction on repeated queries** ($6.2\text{ ms}$ latency vs $3380.4\text{ ms}$ uncached).
 
 ---
 
@@ -92,19 +92,19 @@ The benchmark (`benchmark_green.py`) was executed across 10 identical student qu
 
 | Metric | Baseline (Uncached) | Green Optimized (Cached) | Measured Improvement |
 | :--- | :--- | :--- | :--- |
-| **Average Query Latency** | 5713.2 ms | 4024.0 ms | **29.57% faster** |
-| **Total Energy Consumed ($E$)** | 0.00021590 kWh | 0.00016914 kWh | **21.66% energy saved** |
-| **Operational Emissions ($O$)** | 0.154036 gCO₂eq | 0.120669 gCO₂eq | **21.66% operational CO₂ saved** |
-| **Embodied Carbon ($M$)** | 0.135973 gCO₂eq | 0.095772 gCO₂eq | **29.57% runtime reduction** |
-| **Cumulative SCI Score** | 0.290009 gCO₂eq | 0.216441 gCO₂eq | **25.37% carbon intensity saved** |
-| **Average SCI per Query** | 0.029001 gCO₂eq | 0.021644 gCO₂eq | **25.37% reduction** |
+| **Average Query Latency** | 4880.1 ms | 3298.3 ms | **32.41% faster** |
+| **Total Energy Consumed ($E$)** | 0.00017390 kWh | 0.00012423 kWh | **28.56% energy saved** |
+| **Operational Emissions ($O$)** | 0.124065 gCO₂eq | 0.088632 gCO₂eq | **28.56% operational CO₂ saved** |
+| **Embodied Carbon ($M$)** | 0.116147 gCO₂eq | 0.078499 gCO₂eq | **32.41% runtime reduction** |
+| **Cumulative SCI Score** | 0.240211 gCO₂eq | 0.167131 gCO₂eq | **30.42% carbon intensity saved** |
+| **Average SCI per Query** | 0.024021 gCO₂eq | 0.016713 gCO₂eq | **30.42% reduction** |
 
 ### 5.2 Slice Breakdown: Repeated Queries vs Unique Queries
 
 | Workload Slice | Baseline Latency | Green Latency | Baseline Energy | Green Energy | Energy Savings % | SCI Savings % |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Repeated Queries (Hits, 3/10)** | 3963.7 ms | **7.0 ms** | 0.00004557 kWh | **0.00000006 kWh** | **99.87% saved** | **99.85% saved** |
-| **Unique Queries (Misses, 7/10)** | 6462.9 ms | 5745.6 ms | 0.00017034 kWh | 0.00016908 kWh | Full inference parity (0.74% variance) | 5.61% saved |
+| **Repeated Queries (Hits, 3/10)** | 3380.4 ms | **6.2 ms** | 0.00003835 kWh | **0.00000005 kWh** | **99.88% saved** | **99.85% saved** |
+| **Unique Queries (Misses, 7/10)** | 5522.8 ms | 4709.2 ms | 0.00013555 kWh | 0.00012419 kWh | **8.38% saved** (lean context pruning) | **11.48% saved** |
 
 ---
 

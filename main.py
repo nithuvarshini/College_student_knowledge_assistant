@@ -84,6 +84,7 @@ def root():
 
 
 @app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
 def health():
     return {"status": "ok", "pipeline_ready": rag is not None}
 

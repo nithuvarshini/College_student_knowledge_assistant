@@ -118,7 +118,7 @@ class GreenTracker:
         """
         self.total_queries += 1
 
-        measured_energy_kwh = 0.0
+        energy_kwh = 0.0
         raw_emissions_kg = 0.0
         duration_sec = max(fallback_duration_sec, 0.0001)
         cpu_power_w = 0.0
@@ -139,7 +139,6 @@ class GreenTracker:
                     ram_power_w = float(emissions_data.ram_power or 0.0)
 
                     if raw_energy > 0.0:
-                        measured_energy_kwh = raw_energy
                         is_directly_measured = True
                         measurement_type = "codecarbon_tracked"
                         measurement_note = "Directly tracked via CodeCarbon hardware power/load monitoring."
@@ -147,10 +146,17 @@ class GreenTracker:
                 logger.warning("Error reading CodeCarbon task '%s': %s", task_name, e)
 
         # Step 2: Handle sub-millisecond cache hits or sensor zero-readings honestly
-        if not is_directly_measured:
+        directly_measured_energy_kwh: Optional[float] = None
+        estimated_energy_kwh: Optional[float] = None
+
+        if is_directly_measured:
+            directly_measured_energy_kwh = raw_energy
+            energy_kwh = raw_energy
+        else:
             # Model energy based on baseline idle system power
             modeled_power_w = max(cpu_power_w + ram_power_w, IDLE_SYSTEM_POWER_WATTS)
-            measured_energy_kwh = (modeled_power_w * duration_sec) / 3600000.0
+            energy_kwh = (modeled_power_w * duration_sec) / 3600000.0
+            estimated_energy_kwh = energy_kwh
             if is_cache_hit:
                 measurement_type = "modeled_estimate"
                 measurement_note = (
@@ -165,7 +171,7 @@ class GreenTracker:
         if is_directly_measured and raw_emissions_kg > 0.0:
             operational_co2_g = raw_emissions_kg * 1000.0
         else:
-            operational_co2_g = measured_energy_kwh * DEFAULT_GRID_INTENSITY_G_PER_KWH
+            operational_co2_g = energy_kwh * DEFAULT_GRID_INTENSITY_G_PER_KWH
 
         # Step 4: Compute Embodied Carbon (M) per GSF guidelines
         embodied_co2_g = EMBODIED_RATE_G_PER_SEC * duration_sec
@@ -178,14 +184,14 @@ class GreenTracker:
             self.cache_hits += 1
         else:
             self.cache_misses += 1
-            self._last_uncached_energy_kwh = measured_energy_kwh
+            self._last_uncached_energy_kwh = energy_kwh
             self._last_uncached_sci_g = sci_score
 
-        self.cumulative_energy_kwh += measured_energy_kwh
+        self.cumulative_energy_kwh += energy_kwh
         if is_directly_measured:
-            self.cumulative_directly_measured_kwh += measured_energy_kwh
+            self.cumulative_directly_measured_kwh += energy_kwh
         else:
-            self.cumulative_modeled_energy_kwh += measured_energy_kwh
+            self.cumulative_modeled_energy_kwh += energy_kwh
 
         self.cumulative_operational_co2_g += operational_co2_g
         self.cumulative_embodied_co2_g += embodied_co2_g
@@ -195,18 +201,28 @@ class GreenTracker:
         energy_saved_kwh = 0.0
         emissions_saved_g = 0.0
         if is_cache_hit and self._last_uncached_energy_kwh > 0.0:
-            energy_saved_kwh = max(0.0, self._last_uncached_energy_kwh - measured_energy_kwh)
+            energy_saved_kwh = max(0.0, self._last_uncached_energy_kwh - energy_kwh)
             emissions_saved_g = max(0.0, self._last_uncached_sci_g - sci_score)
             self.cumulative_energy_saved_kwh += energy_saved_kwh
             self.cumulative_emissions_avoided_g_co2 += emissions_saved_g
 
+        status_desc = (
+            "Directly measured via CodeCarbon"
+            if is_directly_measured
+            else ("Modeled estimate (sub-millisecond cache hit)" if is_cache_hit else "Modeled estimate (sensor fallback)")
+        )
+
         return {
             "is_cache_hit": is_cache_hit,
             "duration_ms": round(duration_sec * 1000.0, 2),
-            "energy_kwh": float(f"{measured_energy_kwh:.10f}"),
-            "measured_energy_kwh": float(f"{measured_energy_kwh:.10f}"),
+            "energy_kwh": float(f"{energy_kwh:.10f}"),
+            "directly_measured_energy_kwh": float(f"{directly_measured_energy_kwh:.10f}") if directly_measured_energy_kwh is not None else None,
+            "estimated_energy_kwh": float(f"{estimated_energy_kwh:.10f}") if estimated_energy_kwh is not None else None,
+            # measured_energy_kwh is strictly populated ONLY when directly measured; otherwise None.
+            "measured_energy_kwh": float(f"{directly_measured_energy_kwh:.10f}") if directly_measured_energy_kwh is not None else None,
             "energy_is_directly_measured": is_directly_measured,
             "energy_measurement_type": measurement_type,
+            "energy_measurement_status": status_desc,
             "measurement_notes": measurement_note,
             "estimated_operational_co2_g": float(f"{operational_co2_g:.8f}"),
             "operational_co2_g": float(f"{operational_co2_g:.8f}"),
@@ -260,7 +276,9 @@ class GreenTracker:
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
             "cache_hit_rate_pct": hit_rate,
+            "cumulative_total_energy_kwh": float(f"{self.cumulative_energy_kwh:.10f}"),
             "cumulative_energy_kwh": float(f"{self.cumulative_energy_kwh:.10f}"),
+            "cumulative_directly_measured_energy_kwh": float(f"{self.cumulative_directly_measured_kwh:.10f}"),
             "cumulative_directly_measured_kwh": float(f"{self.cumulative_directly_measured_kwh:.10f}"),
             "cumulative_modeled_energy_kwh": float(f"{self.cumulative_modeled_energy_kwh:.10f}"),
             "cumulative_operational_co2_g": float(f"{self.cumulative_operational_co2_g:.8f}"),
@@ -269,6 +287,7 @@ class GreenTracker:
             "average_sci_g_co2_per_query": avg_sci,
             "cumulative_energy_saved_kwh": float(f"{self.cumulative_energy_saved_kwh:.10f}"),
             "cumulative_emissions_avoided_g_co2": float(f"{self.cumulative_emissions_avoided_g_co2:.8f}"),
+            "energy_accounting_note": "Directly tracked energy is metered via CodeCarbon tasks; modeled energy accounts for sub-millisecond cache hits below physical sensor resolution.",
             "measurement_backend": "CodeCarbon OfflineEmissionsTracker" if self._tracker_active else "Hardware Model Fallback",
             "country_iso": self.country_iso,
         }

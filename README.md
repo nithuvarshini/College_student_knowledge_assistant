@@ -39,11 +39,11 @@ Tested on an Intel(R) Core(TM) i5-6300U CPU @ 2.40GHz across 10 sample student q
 
 | Metric | Baseline (Uncached) | Green Optimized (Cached) | Measured Improvement |
 | :--- | :--- | :--- | :--- |
-| **Average Query Latency** | 5713.2 ms | 4024.0 ms | **29.57% faster** |
-| **Total Energy Consumed** | 0.00021590 kWh | 0.00016914 kWh | **21.66% energy saved** |
-| **Cumulative SCI Score** | 0.290009 $\text{gCO}_2\text{eq}$ | 0.216441 $\text{gCO}_2\text{eq}$ | **25.37% carbon saved** |
-| **Repeated Query Latency** | 3963.7 ms | **7.0 ms** | **99.82% faster** |
-| **Repeated Query Energy** | 0.00004557 kWh | **0.00000006 kWh** | **99.87% energy saved** |
+| **Average Query Latency** | 4880.1 ms | 3298.3 ms | **32.41% faster** |
+| **Total Energy Consumed** | 0.00017390 kWh | 0.00012423 kWh | **28.56% energy saved** |
+| **Cumulative SCI Score** | 0.240211 $\text{gCO}_2\text{eq}$ | 0.167131 $\text{gCO}_2\text{eq}$ | **30.42% carbon saved** |
+| **Repeated Query Latency** | 3380.4 ms | **6.2 ms** | **99.82% faster** |
+| **Repeated Query Energy** | 0.00003835 kWh | **0.00000005 kWh** | **99.88% energy saved** |
 
 ---
 

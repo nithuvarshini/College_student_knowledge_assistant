@@ -132,6 +132,12 @@ with st.sidebar:
             c4.metric("CO₂ Avoided", f"{gs.get('cumulative_emissions_avoided_g_co2', 0):.4f} g")
 
             st.caption(f"⚡ Avg SCI: **{gs.get('average_sci_g_co2_per_query', 0):.6f} gCO₂eq / query**")
+            st.caption(
+                f"🔬 **Energy Accounting:**<br>"
+                f"• Directly Tracked: `{gs.get('cumulative_directly_measured_kwh', 0):.8f} kWh`<br>"
+                f"• Modeled Estimates: `{gs.get('cumulative_modeled_energy_kwh', 0):.8f} kWh`",
+                unsafe_allow_html=True,
+            )
         else:
             st.caption("Waiting for API connection...")
     except Exception:
@@ -240,25 +246,43 @@ with tab_chat:
         st.markdown(f"**🙋 Question:** {q}")
 
         # Green telemetry badge
-        dur = gm.get('duration_ms', 0)
-        energy = gm.get('measured_energy_kwh') or gm.get('energy_kwh', 0)
-        sci = gm.get('sci_score_g_co2_per_query', 0)
-        saved = gm.get('savings_vs_last_uncached', {}).get('energy_saved_kwh') or gm.get('energy_saved_vs_baseline_kwh', 0)
+        dur = gm.get("duration_ms", 0)
+        is_measured = gm.get("energy_is_directly_measured", False)
+        energy = gm.get("energy_kwh")
+        sci = gm.get("sci_score_g_co2_per_query")
+        saved_dict = gm.get("savings_vs_last_uncached")
+        saved = saved_dict.get("energy_saved_kwh") if isinstance(saved_dict, dict) else gm.get("energy_saved_vs_baseline_kwh")
+
+        cls_tag = "carbon-badge" if is_hit else "carbon-badge-miss"
+
+        if energy is not None:
+            if is_measured:
+                energy_badge = f'<span class="{cls_tag}">💡 Tracked Energy (CodeCarbon): {energy:.8f} kWh</span>'
+            else:
+                energy_badge = f'<span class="{cls_tag}">💡 Modeled Energy (Idle Baseline): {energy:.8f} kWh</span>'
+        else:
+            energy_badge = f'<span class="{cls_tag}">💡 Energy: Unavailable</span>'
+
+        if sci is not None:
+            sci_badge = f'<span class="{cls_tag}">🌍 SCI Score: {sci:.6f} gCO₂eq</span>'
+        else:
+            sci_badge = f'<span class="{cls_tag}">🌍 SCI Score: Unavailable</span>'
 
         if is_hit:
+            saved_badge = f'<span class="carbon-badge">🌱 Energy Saved: {saved:.8f} kWh</span>' if (saved is not None and saved > 0) else ''
             badge_html = f"""
             <span class="carbon-badge">⚡ Cache Hit (Green Optimized)</span>
             <span class="carbon-badge">⏱️ {dur} ms</span>
-            <span class="carbon-badge">💡 Measured Energy: {energy:.8f} kWh</span>
-            <span class="carbon-badge">🌍 SCI Score: {sci:.6f} gCO₂eq</span>
-            <span class="carbon-badge">🌱 Energy Saved: {saved:.8f} kWh</span>
+            {energy_badge}
+            {sci_badge}
+            {saved_badge}
             """
         else:
             badge_html = f"""
             <span class="carbon-badge-miss">⚙️ Model Inference (Cache Miss)</span>
             <span class="carbon-badge-miss">⏱️ {dur} ms</span>
-            <span class="carbon-badge-miss">💡 Measured Energy: {energy:.8f} kWh</span>
-            <span class="carbon-badge-miss">🌍 SCI Score: {sci:.6f} gCO₂eq</span>
+            {energy_badge}
+            {sci_badge}
             """
         st.markdown(badge_html, unsafe_allow_html=True)
 
@@ -371,11 +395,11 @@ with tab_green:
             st.error(f"Could not connect to FastAPI server at {API_URL}: {e}")
             st.stop()
 
-        base_gm = resp_base.get("green_metrics")
-        green_gm = resp_green.get("green_metrics")
+        base_gm = resp_base.get("green_metrics") or {}
+        green_gm = resp_green.get("green_metrics") or {}
 
-        if not base_gm or not green_gm:
-            st.error("Green metrics unavailable in server response.")
+        if not base_gm and not green_gm:
+            st.error("Green metrics unavailable in server response. Please verify that the API is running with sustainability tracking enabled.")
             st.stop()
 
         base_lat = base_gm.get("duration_ms")
@@ -389,18 +413,59 @@ with tab_green:
         base_sci = base_gm.get("sci_score_g_co2_per_query")
         green_sci = green_gm.get("sci_score_g_co2_per_query")
 
-        if any(v is None for v in [base_lat, green_lat, base_energy, green_energy, base_sci, green_sci]):
-            st.error("Some metrics could not be retrieved from the server. Check logs.")
-            st.stop()
+        # Latency calculation
+        if base_lat is not None and green_lat is not None and base_lat > 0:
+            lat_saved_pct = round(100 * (base_lat - green_lat) / base_lat, 1)
+            lat_impact = f"⚡ {lat_saved_pct}% faster"
+        else:
+            lat_saved_pct = None
+            lat_impact = "Unavailable"
 
-        lat_saved_pct = round(100 * (base_lat - green_lat) / max(base_lat, 1), 1)
-        energy_saved_pct = round(100 * (base_energy - green_energy) / max(base_energy, 1e-12), 1)
-        sci_saved_pct = round(100 * (base_sci - green_sci) / max(base_sci, 1e-12), 1)
+        # Energy calculation
+        if base_energy is not None and green_energy is not None and base_energy > 0:
+            energy_saved_pct = round(100 * (base_energy - green_energy) / base_energy, 1)
+            energy_impact = f"🌱 {energy_saved_pct}% less energy"
+        else:
+            energy_saved_pct = None
+            energy_impact = "Unavailable (No valid energy measurement)"
 
-        st.success(f"Benchmark Complete! Measured actual reduction: **{energy_saved_pct}% energy** and **{sci_saved_pct}% carbon intensity**.")
+        # Operational CO2 calculation
+        if base_op is not None and green_op is not None and base_op > 0:
+            op_saved_pct = round(100 * (base_op - green_op) / base_op, 1)
+            op_impact = f"🌱 {op_saved_pct}% less operational CO₂"
+        else:
+            op_impact = "Unavailable"
 
-        base_meas_type = "Directly Tracked (CodeCarbon)" if base_gm.get("energy_is_directly_measured") else "Modeled Estimate"
-        green_meas_type = "Directly Tracked (CodeCarbon)" if green_gm.get("energy_is_directly_measured") else "Modeled Estimate (Sub-ms Cache Hit)"
+        # Embodied Carbon calculation
+        if lat_saved_pct is not None:
+            emb_impact = f"🌱 {lat_saved_pct}% runtime reduction"
+        else:
+            emb_impact = "Unavailable"
+
+        # SCI Score calculation
+        if base_sci is not None and green_sci is not None and base_sci > 0:
+            sci_saved_pct = round(100 * (base_sci - green_sci) / base_sci, 1)
+            sci_impact = f"🎯 {sci_saved_pct}% SCI reduction"
+        else:
+            sci_saved_pct = None
+            sci_impact = "Unavailable (No valid SCI measurement)"
+
+        # Banner message
+        if energy_saved_pct is not None and sci_saved_pct is not None:
+            st.success(f"Benchmark Complete! Calculated reduction: **{energy_saved_pct}% energy** and **{sci_saved_pct}% carbon intensity**.")
+        else:
+            st.warning("⚠️ Benchmark complete, but valid energy/carbon metrics could not be fully verified for both queries. Savings cannot be claimed.")
+
+        base_meas_type = (
+            "Directly Tracked (CodeCarbon)"
+            if base_gm.get("energy_is_directly_measured")
+            else ("Modeled Estimate (Sensor Fallback)" if base_energy is not None else "Unavailable")
+        )
+        green_meas_type = (
+            "Directly Tracked (CodeCarbon)"
+            if green_gm.get("energy_is_directly_measured")
+            else ("Modeled Estimate (Sub-ms Cache Hit)" if green_energy is not None else "Unavailable")
+        )
 
         # Comparison metrics table
         comp_df = pd.DataFrame({
@@ -414,30 +479,30 @@ with tab_green:
                 "Execution Path"
             ],
             "Baseline (Uncached)": [
-                f"{base_lat:.1f} ms",
-                f"{base_energy:.10f} kWh",
+                f"{base_lat:.1f} ms" if base_lat is not None else "Unavailable",
+                f"{base_energy:.10f} kWh" if base_energy is not None else "Unavailable",
                 base_meas_type,
-                f"{base_op:.8f} gCO₂eq",
-                f"{base_emb:.8f} gCO₂eq",
-                f"{base_sci:.8f} gCO₂eq / query",
+                f"{base_op:.8f} gCO₂eq" if base_op is not None else "Unavailable",
+                f"{base_emb:.8f} gCO₂eq" if base_emb is not None else "Unavailable",
+                f"{base_sci:.8f} gCO₂eq / query" if base_sci is not None else "Unavailable",
                 "Full Vector Search + Inference"
             ],
             "Green Optimized (Cached)": [
-                f"{green_lat:.1f} ms",
-                f"{green_energy:.10f} kWh",
+                f"{green_lat:.1f} ms" if green_lat is not None else "Unavailable",
+                f"{green_energy:.10f} kWh" if green_energy is not None else "Unavailable",
                 green_meas_type,
-                f"{green_op:.8f} gCO₂eq",
-                f"{green_emb:.8f} gCO₂eq",
-                f"{green_sci:.8f} gCO₂eq / query",
+                f"{green_op:.8f} gCO₂eq" if green_op is not None else "Unavailable",
+                f"{green_emb:.8f} gCO₂eq" if green_emb is not None else "Unavailable",
+                f"{green_sci:.8f} gCO₂eq / query" if green_sci is not None else "Unavailable",
                 "Two-Tier LRU Cache Hit"
             ],
             "Comparison Impact": [
-                f"⚡ {lat_saved_pct}% faster",
-                f"🌱 {energy_saved_pct}% less energy",
+                lat_impact,
+                energy_impact,
                 "—",
-                f"🌱 {sci_saved_pct}% less operational CO₂",
-                f"🌱 {lat_saved_pct}% runtime reduction",
-                f"🎯 {sci_saved_pct}% SCI reduction",
+                op_impact,
+                emb_impact,
+                sci_impact,
                 "Zero Redundant Neural Inference"
             ],
         })
@@ -447,17 +512,23 @@ with tab_green:
         c_chart1, c_chart2 = st.columns(2)
         with c_chart1:
             st.markdown("#### ⏱️ Latency Comparison (ms)")
-            chart_lat_data = pd.DataFrame({
-                "Latency (ms)": [base_lat, green_lat]
-            }, index=["Baseline", "Green Optimized"])
-            st.bar_chart(chart_lat_data)
+            if base_lat is not None and green_lat is not None:
+                chart_lat_data = pd.DataFrame({
+                    "Latency (ms)": [base_lat, green_lat]
+                }, index=["Baseline", "Green Optimized"])
+                st.bar_chart(chart_lat_data)
+            else:
+                st.info("Latency chart unavailable.")
 
         with c_chart2:
             st.markdown("#### 🌍 SCI Score (gCO₂eq / query)")
-            chart_sci_data = pd.DataFrame({
-                "SCI (gCO2eq)": [base_sci, green_sci]
-            }, index=["Baseline", "Green Optimized"])
-            st.bar_chart(chart_sci_data)
+            if base_sci is not None and green_sci is not None:
+                chart_sci_data = pd.DataFrame({
+                    "SCI (gCO2eq)": [base_sci, green_sci]
+                }, index=["Baseline", "Green Optimized"])
+                st.bar_chart(chart_sci_data)
+            else:
+                st.info("SCI chart unavailable.")
 
         st.caption(
             "ℹ️ **Measurement Methodology & Limitations:** "
