@@ -31,9 +31,9 @@ class VectorStore:
         self._embedding_cache: Dict[str, List[float]] = {}
         self.embedding_cache_hits = 0
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: List[str], use_cache: bool = True) -> List[List[float]]:
         # Green optimization: query embedding caching
-        if len(texts) == 1:
+        if use_cache and len(texts) == 1:
             t = texts[0]
             if t in self._embedding_cache:
                 self.embedding_cache_hits += 1
@@ -60,7 +60,7 @@ class VectorStore:
             self.collection.add(
                 ids=[c["chunk_id"] for c in batch],
                 documents=[c["text"] for c in batch],
-                embeddings=self.embed([c["text"] for c in batch]),
+                embeddings=self.embed([c["text"] for c in batch], use_cache=False),
                 metadatas=[
                     {
                         "filename": c["filename"],
@@ -76,20 +76,20 @@ class VectorStore:
         logger.info("Indexing done. Total chunks: %d", self.collection.count())
         return len(new_chunks)
 
-    def semantic_search(self, query: str, top_k: int = 5, doc_type_filter: Optional[str] = None, year_filter: Optional[str] = None) -> List[Dict]:
+    def semantic_search(self, query: str, top_k: int = 5, doc_type_filter: Optional[str] = None, year_filter: Optional[str] = None, use_cache: bool = True) -> List[Dict]:
         where = self._build_filter(doc_type_filter, year_filter)
         results = self.collection.query(
-            query_embeddings=self.embed([query]),
+            query_embeddings=self.embed([query], use_cache=use_cache),
             n_results=min(top_k, max(self.collection.count(), 1)),
             where=where,
             include=["documents", "metadatas", "distances"],
         )
         return self._format(results, "semantic")
 
-    def keyword_search(self, query: str, top_k: int = 5, doc_type_filter: Optional[str] = None, year_filter: Optional[str] = None) -> List[Dict]:
+    def keyword_search(self, query: str, top_k: int = 5, doc_type_filter: Optional[str] = None, year_filter: Optional[str] = None, use_cache: bool = True) -> List[Dict]:
         keywords = [w for w in query.split() if len(w) > 3]
         if not keywords:
-            return self.semantic_search(query, top_k, doc_type_filter, year_filter)
+            return self.semantic_search(query, top_k, doc_type_filter, year_filter, use_cache=use_cache)
         primary = max(keywords, key=len)
         where = self._build_filter(doc_type_filter, year_filter)
         try:
@@ -105,12 +105,12 @@ class VectorStore:
                 return formatted[:top_k]
         except Exception as e:
             logger.debug("Keyword search failed: %s. Falling back to semantic.", e)
-        return self.semantic_search(query, top_k, doc_type_filter, year_filter)
+        return self.semantic_search(query, top_k, doc_type_filter, year_filter, use_cache=use_cache)
 
-    def hybrid_search(self, query: str, top_k: int = 5, doc_type_filter: Optional[str] = None, year_filter: Optional[str] = None) -> List[Dict]:
+    def hybrid_search(self, query: str, top_k: int = 5, doc_type_filter: Optional[str] = None, year_filter: Optional[str] = None, use_cache: bool = True) -> List[Dict]:
         seen = set()
         merged = []
-        for result in self.semantic_search(query, top_k, doc_type_filter, year_filter) + self.keyword_search(query, top_k, doc_type_filter, year_filter):
+        for result in self.semantic_search(query, top_k, doc_type_filter, year_filter, use_cache=use_cache) + self.keyword_search(query, top_k, doc_type_filter, year_filter, use_cache=use_cache):
             if result["chunk_id"] not in seen:
                 seen.add(result["chunk_id"])
                 merged.append(result)

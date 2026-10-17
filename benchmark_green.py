@@ -85,9 +85,11 @@ def run_benchmark():
                 "query_idx": idx,
                 "question": q,
                 "duration_ms": gm["duration_ms"],
-                "measured_energy_kwh": gm["measured_energy_kwh"],
-                "operational_co2_g": gm["estimated_operational_co2_g"],
-                "embodied_co2_g": gm["assumed_embodied_co2_g"],
+                "energy_kwh": gm["energy_kwh"],
+                "is_directly_measured": gm.get("energy_is_directly_measured", False),
+                "measurement_type": gm.get("energy_measurement_type", "unknown"),
+                "operational_co2_g": gm["operational_co2_g"],
+                "embodied_co2_g": gm["embodied_co2_g"],
                 "sci_score": gm["sci_score_g_co2_per_query"],
                 "is_cache_hit": gm["is_cache_hit"],
             })
@@ -98,7 +100,7 @@ def run_benchmark():
     averaged_baseline = []
     for q_idx in range(len(BENCHMARK_QUERIES)):
         avg_dur = sum(baseline_query_records[t][q_idx]["duration_ms"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
-        avg_energy = sum(baseline_query_records[t][q_idx]["measured_energy_kwh"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
+        avg_energy = sum(baseline_query_records[t][q_idx]["energy_kwh"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_op = sum(baseline_query_records[t][q_idx]["operational_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_emb = sum(baseline_query_records[t][q_idx]["embodied_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_sci = sum(baseline_query_records[t][q_idx]["sci_score"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
@@ -106,7 +108,9 @@ def run_benchmark():
             "query_idx": q_idx + 1,
             "question": BENCHMARK_QUERIES[q_idx],
             "duration_ms": round(avg_dur, 2),
-            "measured_energy_kwh": float(f"{avg_energy:.10f}"),
+            "energy_kwh": float(f"{avg_energy:.10f}"),
+            "is_directly_measured": baseline_query_records[0][q_idx]["is_directly_measured"],
+            "measurement_type": baseline_query_records[0][q_idx]["measurement_type"],
             "operational_co2_g": float(f"{avg_op:.8f}"),
             "embodied_co2_g": float(f"{avg_emb:.8f}"),
             "sci_score": float(f"{avg_sci:.8f}"),
@@ -132,9 +136,11 @@ def run_benchmark():
                 "query_idx": idx,
                 "question": q,
                 "duration_ms": gm["duration_ms"],
-                "measured_energy_kwh": gm["measured_energy_kwh"],
-                "operational_co2_g": gm["estimated_operational_co2_g"],
-                "embodied_co2_g": gm["assumed_embodied_co2_g"],
+                "energy_kwh": gm["energy_kwh"],
+                "is_directly_measured": gm.get("energy_is_directly_measured", False),
+                "measurement_type": gm.get("energy_measurement_type", "unknown"),
+                "operational_co2_g": gm["operational_co2_g"],
+                "embodied_co2_g": gm["embodied_co2_g"],
                 "sci_score": gm["sci_score_g_co2_per_query"],
                 "is_cache_hit": gm["is_cache_hit"],
             })
@@ -146,7 +152,7 @@ def run_benchmark():
     averaged_green = []
     for q_idx in range(len(BENCHMARK_QUERIES)):
         avg_dur = sum(green_query_records[t][q_idx]["duration_ms"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
-        avg_energy = sum(green_query_records[t][q_idx]["measured_energy_kwh"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
+        avg_energy = sum(green_query_records[t][q_idx]["energy_kwh"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_op = sum(green_query_records[t][q_idx]["operational_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_emb = sum(green_query_records[t][q_idx]["embodied_co2_g"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
         avg_sci = sum(green_query_records[t][q_idx]["sci_score"] for t in range(TRIALS_PER_MODE)) / TRIALS_PER_MODE
@@ -155,7 +161,9 @@ def run_benchmark():
             "query_idx": q_idx + 1,
             "question": BENCHMARK_QUERIES[q_idx],
             "duration_ms": round(avg_dur, 2),
-            "measured_energy_kwh": float(f"{avg_energy:.10f}"),
+            "energy_kwh": float(f"{avg_energy:.10f}"),
+            "is_directly_measured": green_query_records[0][q_idx]["is_directly_measured"],
+            "measurement_type": green_query_records[0][q_idx]["measurement_type"],
             "operational_co2_g": float(f"{avg_op:.8f}"),
             "embodied_co2_g": float(f"{avg_emb:.8f}"),
             "sci_score": float(f"{avg_sci:.8f}"),
@@ -164,11 +172,11 @@ def run_benchmark():
 
     # ── STEP 4: DETAILED STATISTICAL ANALYSIS & SEPARATION ───────────────────
     # A. Overall Workload
-    base_tot_energy = sum(r["measured_energy_kwh"] for r in averaged_baseline)
+    base_tot_energy = sum(r["energy_kwh"] for r in averaged_baseline)
     base_tot_sci = sum(r["sci_score"] for r in averaged_baseline)
     base_avg_lat = sum(r["duration_ms"] for r in averaged_baseline) / len(averaged_baseline)
 
-    green_tot_energy = sum(r["measured_energy_kwh"] for r in averaged_green)
+    green_tot_energy = sum(r["energy_kwh"] for r in averaged_green)
     green_tot_sci = sum(r["sci_score"] for r in averaged_green)
     green_avg_lat = sum(r["duration_ms"] for r in averaged_green) / len(averaged_green)
 
@@ -181,8 +189,8 @@ def run_benchmark():
     if hit_indices:
         hit_base_lat = sum(averaged_baseline[i]["duration_ms"] for i in hit_indices) / len(hit_indices)
         hit_green_lat = sum(averaged_green[i]["duration_ms"] for i in hit_indices) / len(hit_indices)
-        hit_base_energy = sum(averaged_baseline[i]["measured_energy_kwh"] for i in hit_indices)
-        hit_green_energy = sum(averaged_green[i]["measured_energy_kwh"] for i in hit_indices)
+        hit_base_energy = sum(averaged_baseline[i]["energy_kwh"] for i in hit_indices)
+        hit_green_energy = sum(averaged_green[i]["energy_kwh"] for i in hit_indices)
         hit_base_sci = sum(averaged_baseline[i]["sci_score"] for i in hit_indices)
         hit_green_sci = sum(averaged_green[i]["sci_score"] for i in hit_indices)
 
@@ -199,8 +207,8 @@ def run_benchmark():
     if miss_indices:
         miss_base_lat = sum(averaged_baseline[i]["duration_ms"] for i in miss_indices) / len(miss_indices)
         miss_green_lat = sum(averaged_green[i]["duration_ms"] for i in miss_indices) / len(miss_indices)
-        miss_base_energy = sum(averaged_baseline[i]["measured_energy_kwh"] for i in miss_indices)
-        miss_green_energy = sum(averaged_green[i]["measured_energy_kwh"] for i in miss_indices)
+        miss_base_energy = sum(averaged_baseline[i]["energy_kwh"] for i in miss_indices)
+        miss_green_energy = sum(averaged_green[i]["energy_kwh"] for i in miss_indices)
         miss_base_sci = sum(averaged_baseline[i]["sci_score"] for i in miss_indices)
         miss_green_sci = sum(averaged_green[i]["sci_score"] for i in miss_indices)
     else:

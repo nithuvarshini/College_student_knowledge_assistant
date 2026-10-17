@@ -18,10 +18,11 @@ In this project, the **College Student Knowledge Assistant** was augmented with 
 - **Actual Workload Measurement:** Integrated CodeCarbon's `OfflineEmissionsTracker` using per-task monitoring (`start_task` / `stop_task`) to measure electricity consumption ($kWh$), active power draw ($W$), and operational emissions.
 - **Strict SCI Formulation:** Implemented the official GSF Software Carbon Intensity metric, explicitly separating **measured energy ($E$)**, **estimated operational emissions ($O = E \times I$)**, and **assumed embodied carbon ($M$)**.
 - **Fair Empirical Benchmark:** Evaluated using automated warm-up runs, identical query sequences across multiple trials, and explicit separation of cache hits versus cache misses.
-- **Verified Results:** Across a representative 10-query student workload (30% repeated inquiries), the green-optimized system achieved:
-  - **20.24% total energy reduction** ($0.00011513\text{ kWh} \to 0.00009183\text{ kWh}$)
-  - **20.35% total SCI reduction** ($0.160531\text{ gCO}_2\text{eq} \to 0.127857\text{ gCO}_2\text{eq}$)
-  - **99.91% energy reduction on repeated queries** ($< 5\text{ ms}$ latency vs $\sim 2400\text{ ms}$ uncached).
+- **Verified Results:** Across a representative 10-query student workload (30% repeated inquiries, 2-trial average), the green-optimized system achieved:
+  - **29.57% latency reduction** ($5713.2\text{ ms} \to 4024.0\text{ ms}$)
+  - **21.66% total energy reduction** ($0.00021590\text{ kWh} \to 0.00016914\text{ kWh}$)
+  - **25.37% total SCI reduction** ($0.290009\text{ gCO}_2\text{eq} \to 0.216441\text{ gCO}_2\text{eq}$)
+  - **99.87% energy reduction on repeated queries** ($7.0\text{ ms}$ latency vs $3963.7\text{ ms}$ uncached).
 
 ---
 
@@ -87,23 +88,23 @@ The benchmark (`benchmark_green.py`) was executed across 10 identical student qu
 
 > **All figures below represent actual empirical data from [`green_benchmark_results.json`](green_benchmark_results.json).**
 
-### 5.1 Overall Workload Summary (10 Queries, 30% Cache Hits)
+### 5.1 Overall Workload Summary (10 Queries, 30% Cache Hits, 2-Trial Average)
 
 | Metric | Baseline (Uncached) | Green Optimized (Cached) | Measured Improvement |
 | :--- | :--- | :--- | :--- |
-| **Average Query Latency** | 3293.9 ms | 2619.5 ms | **20.47% faster** |
-| **Total Energy Consumed ($E$)** | 0.00011513 kWh | 0.00009183 kWh | **20.24% energy saved** |
-| **Operational Emissions ($O$)** | 0.082136 gCO₂eq | 0.065513 gCO₂eq | **20.24% operational CO₂ saved** |
-| **Embodied Carbon ($M$)** | 0.078395 gCO₂eq | 0.062344 gCO₂eq | **20.47% runtime reduction** |
-| **Cumulative SCI Score** | 0.160531 gCO₂eq | 0.127857 gCO₂eq | **20.35% carbon intensity saved** |
-| **Average SCI per Query** | 0.016053 gCO₂eq | 0.012786 gCO₂eq | **20.35% reduction** |
+| **Average Query Latency** | 5713.2 ms | 4024.0 ms | **29.57% faster** |
+| **Total Energy Consumed ($E$)** | 0.00021590 kWh | 0.00016914 kWh | **21.66% energy saved** |
+| **Operational Emissions ($O$)** | 0.154036 gCO₂eq | 0.120669 gCO₂eq | **21.66% operational CO₂ saved** |
+| **Embodied Carbon ($M$)** | 0.135973 gCO₂eq | 0.095772 gCO₂eq | **29.57% runtime reduction** |
+| **Cumulative SCI Score** | 0.290009 gCO₂eq | 0.216441 gCO₂eq | **25.37% carbon intensity saved** |
+| **Average SCI per Query** | 0.029001 gCO₂eq | 0.021644 gCO₂eq | **25.37% reduction** |
 
 ### 5.2 Slice Breakdown: Repeated Queries vs Unique Queries
 
 | Workload Slice | Baseline Latency | Green Latency | Baseline Energy | Green Energy | Energy Savings % | SCI Savings % |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Repeated Queries (Hits, 3/10)** | 2398.4 ms | **4.7 ms** | 0.00002581 kWh | **0.00000002 kWh** | **99.91% saved** | **99.86% saved** |
-| **Unique Queries (Misses, 7/10)** | 3677.7 ms | 3740.1 ms | 0.00008932 kWh | 0.00009180 kWh | Full inference parity (within 2.7% normal load variance) | Parity |
+| **Repeated Queries (Hits, 3/10)** | 3963.7 ms | **7.0 ms** | 0.00004557 kWh | **0.00000006 kWh** | **99.87% saved** | **99.85% saved** |
+| **Unique Queries (Misses, 7/10)** | 6462.9 ms | 5745.6 ms | 0.00017034 kWh | 0.00016908 kWh | Full inference parity (0.74% variance) | 5.61% saved |
 
 ---
 

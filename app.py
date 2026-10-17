@@ -339,85 +339,106 @@ with tab_green:
         run_benchmark_btn = st.button("🚀 Run Live Green vs Baseline Comparison", type="primary")
 
     if run_benchmark_btn:
-        with st.spinner("Measuring Baseline query (bypassing cache)..."):
-            # Step 1: Run Baseline (green_mode=False)
-            t0 = time.time()
-            resp_base = requests.post(
-                f"{API_URL}/query",
-                json={"question": test_query, "green_mode": False, "top_k": 5},
-                timeout=60,
-            ).json()
+        try:
+            with st.spinner("Executing Baseline query (cache disabled)..."):
+                r_base = requests.post(
+                    f"{API_URL}/query",
+                    json={"question": test_query, "green_mode": False, "top_k": 5},
+                    timeout=90,
+                )
+                if r_base.status_code != 200:
+                    st.error(f"Baseline query failed: {r_base.status_code} - {r_base.text}")
+                    st.stop()
+                resp_base = r_base.json()
 
-        with st.spinner("Measuring Green Optimized query (serving warm cache)..."):
-            # Step 2: Prime and run Green (green_mode=True)
-            _ = requests.post(
-                f"{API_URL}/query",
-                json={"question": test_query, "green_mode": True, "top_k": 5},
-                timeout=60,
-            )
-            resp_green = requests.post(
-                f"{API_URL}/query",
-                json={"question": test_query, "green_mode": True, "top_k": 5},
-                timeout=60,
-            ).json()
+            with st.spinner("Executing Green query (priming and querying warm cache)..."):
+                # Prime the cache with green_mode=True
+                _ = requests.post(
+                    f"{API_URL}/query",
+                    json={"question": test_query, "green_mode": True, "top_k": 5},
+                    timeout=90,
+                )
+                r_green = requests.post(
+                    f"{API_URL}/query",
+                    json={"question": test_query, "green_mode": True, "top_k": 5},
+                    timeout=90,
+                )
+                if r_green.status_code != 200:
+                    st.error(f"Green query failed: {r_green.status_code} - {r_green.text}")
+                    st.stop()
+                resp_green = r_green.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"Could not connect to FastAPI server at {API_URL}: {e}")
+            st.stop()
 
-        base_gm = resp_base.get("green_metrics", {})
-        green_gm = resp_green.get("green_metrics", {})
+        base_gm = resp_base.get("green_metrics")
+        green_gm = resp_green.get("green_metrics")
 
-        base_lat = base_gm.get("duration_ms", 1200.0)
-        green_lat = green_gm.get("duration_ms", 3.0)
+        if not base_gm or not green_gm:
+            st.error("Green metrics unavailable in server response.")
+            st.stop()
 
-        base_energy = base_gm.get("measured_energy_kwh") or base_gm.get("energy_kwh", 0.000008)
-        green_energy = green_gm.get("measured_energy_kwh") or green_gm.get("energy_kwh", 0.00000004)
+        base_lat = base_gm.get("duration_ms")
+        green_lat = green_gm.get("duration_ms")
+        base_energy = base_gm.get("energy_kwh")
+        green_energy = green_gm.get("energy_kwh")
+        base_op = base_gm.get("operational_co2_g")
+        green_op = green_gm.get("operational_co2_g")
+        base_emb = base_gm.get("embodied_co2_g")
+        green_emb = green_gm.get("embodied_co2_g")
+        base_sci = base_gm.get("sci_score_g_co2_per_query")
+        green_sci = green_gm.get("sci_score_g_co2_per_query")
 
-        base_op = base_gm.get("estimated_operational_co2_g") or base_gm.get("operational_co2_g", 0.006)
-        green_op = green_gm.get("estimated_operational_co2_g") or green_gm.get("operational_co2_g", 0.00003)
-
-        base_emb = base_gm.get("assumed_embodied_co2_g") or base_gm.get("embodied_co2_g", 0.002)
-        green_emb = green_gm.get("assumed_embodied_co2_g") or green_gm.get("embodied_co2_g", 0.00001)
-
-        base_sci = base_gm.get("sci_score_g_co2_per_query", 0.0085)
-        green_sci = green_gm.get("sci_score_g_co2_per_query", 0.00004)
+        if any(v is None for v in [base_lat, green_lat, base_energy, green_energy, base_sci, green_sci]):
+            st.error("Some metrics could not be retrieved from the server. Check logs.")
+            st.stop()
 
         lat_saved_pct = round(100 * (base_lat - green_lat) / max(base_lat, 1), 1)
         energy_saved_pct = round(100 * (base_energy - green_energy) / max(base_energy, 1e-12), 1)
         sci_saved_pct = round(100 * (base_sci - green_sci) / max(base_sci, 1e-12), 1)
 
-        st.success(f"Benchmark Complete! Green optimization reduced energy & carbon intensity by **{energy_saved_pct}%**!")
+        st.success(f"Benchmark Complete! Measured actual reduction: **{energy_saved_pct}% energy** and **{sci_saved_pct}% carbon intensity**.")
+
+        base_meas_type = "Directly Tracked (CodeCarbon)" if base_gm.get("energy_is_directly_measured") else "Modeled Estimate"
+        green_meas_type = "Directly Tracked (CodeCarbon)" if green_gm.get("energy_is_directly_measured") else "Modeled Estimate (Sub-ms Cache Hit)"
 
         # Comparison metrics table
         comp_df = pd.DataFrame({
             "Metric Category": [
                 "Execution Latency",
-                "Measured Energy (E) [CodeCarbon]",
-                "Estimated Operational CO₂ (E × I)",
+                "Workload Energy (E)",
+                "Energy Measurement Source",
+                "Operational CO₂ (E × I)",
                 "Assumed Embodied Carbon (M)",
                 "Software Carbon Intensity (SCI)",
-                "Execution Type"
+                "Execution Path"
             ],
             "Baseline (Uncached)": [
                 f"{base_lat:.1f} ms",
-                f"{base_energy:.8f} kWh",
-                f"{base_op:.6f} gCO₂eq",
-                f"{base_emb:.6f} gCO₂eq",
-                f"{base_sci:.6f} gCO₂eq / query",
+                f"{base_energy:.10f} kWh",
+                base_meas_type,
+                f"{base_op:.8f} gCO₂eq",
+                f"{base_emb:.8f} gCO₂eq",
+                f"{base_sci:.8f} gCO₂eq / query",
                 "Full Vector Search + Inference"
             ],
             "Green Optimized (Cached)": [
                 f"{green_lat:.1f} ms",
-                f"{green_energy:.8f} kWh",
-                f"{green_op:.6f} gCO₂eq",
-                f"{green_emb:.6f} gCO₂eq",
-                f"{green_sci:.6f} gCO₂eq / query",
-                "LRU Cache + Embedding Cache"
+                f"{green_energy:.10f} kWh",
+                green_meas_type,
+                f"{green_op:.8f} gCO₂eq",
+                f"{green_emb:.8f} gCO₂eq",
+                f"{green_sci:.8f} gCO₂eq / query",
+                "Two-Tier LRU Cache Hit"
             ],
-            "Savings / Impact": [
+            "Comparison Impact": [
                 f"⚡ {lat_saved_pct}% faster",
                 f"🌱 {energy_saved_pct}% less energy",
+                "—",
                 f"🌱 {sci_saved_pct}% less operational CO₂",
                 f"🌱 {lat_saved_pct}% runtime reduction",
                 f"🎯 {sci_saved_pct}% SCI reduction",
-                "Zero Redundant Compute"
+                "Zero Redundant Neural Inference"
             ],
         })
         st.table(comp_df)
@@ -438,7 +459,14 @@ with tab_green:
             }, index=["Baseline", "Green Optimized"])
             st.bar_chart(chart_sci_data)
 
-        st.caption("ℹ️ **Methodology & Limitations:** Energy is empirically tracked using CodeCarbon task monitoring. Operational CO₂ applies CodeCarbon's India grid factor (~713 gCO₂eq/kWh). Embodied carbon (M) is an amortized model estimate per GSF guidelines (300kg CO₂eq / 4-yr lifespan). Network transmission and external data center PUE are excluded from this boundary.")
+        st.caption(
+            "ℹ️ **Measurement Methodology & Limitations:** "
+            "Baseline queries with active inference are directly tracked using CodeCarbon task monitoring. "
+            "Sub-millisecond cache hits fall below physical sensor polling frequency and are modeled using the idle baseline power. "
+            "Operational CO₂ applies CodeCarbon's India grid intensity (~713 gCO₂eq/kWh). "
+            "Embodied carbon (M) is an amortized model estimate per GSF guidelines (300kg CO₂eq / 4-yr lifespan). "
+            "Network transmission and external data center PUE are excluded from this local endpoint boundary."
+        )
 
     st.divider()
 

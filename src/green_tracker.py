@@ -1,7 +1,7 @@
 """
 src/green_tracker.py
 Sustainability and Green Software Engineering measurement module.
-Integrates CodeCarbon OfflineEmissionsTracker for empirical hardware energy tracking
+Integrates CodeCarbon OfflineEmissionsTracker for workload energy tracking
 and the Green Software Foundation (GSF) Software Carbon Intensity (SCI) standard:
 SCI = ((E * I) + M) / R
 """
@@ -11,6 +11,7 @@ import logging
 import time
 import uuid
 from typing import Dict, Optional
+
 try:
     from codecarbon import OfflineEmissionsTracker
     CODECARBON_AVAILABLE = True
@@ -20,7 +21,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Standard India national grid average ~713 gCO2eq/kWh in CodeCarbon
+# Standard India national grid intensity in CodeCarbon (~713.0 gCO2eq/kWh)
 DEFAULT_COUNTRY_ISO = "IND"
 DEFAULT_GRID_INTENSITY_G_PER_KWH = 713.0
 
@@ -29,11 +30,15 @@ DEFAULT_GRID_INTENSITY_G_PER_KWH = 713.0
 # 300,000 g / (4 * 365 * 24 * 3600 s) ≈ 0.00238 gCO2eq per second of device runtime
 EMBODIED_RATE_G_PER_SEC = 0.00238
 
+# Baseline idle system power for sub-millisecond estimation
+IDLE_SYSTEM_POWER_WATTS = 5.5
+
 
 class GreenTracker:
     """
     Manages CodeCarbon emissions tracking and computes the GSF Software
     Carbon Intensity (SCI) metric for individual queries and cumulative sessions.
+    Clearly distinguishes directly measured hardware energy from modeled estimates.
     """
 
     def __init__(self, country_iso: str = DEFAULT_COUNTRY_ISO):
@@ -46,13 +51,15 @@ class GreenTracker:
         self.cache_hits = 0
         self.cache_misses = 0
         self.cumulative_energy_kwh = 0.0
+        self.cumulative_directly_measured_kwh = 0.0
+        self.cumulative_modeled_energy_kwh = 0.0
         self.cumulative_operational_co2_g = 0.0
         self.cumulative_embodied_co2_g = 0.0
         self.cumulative_sci_g_co2 = 0.0
         self.cumulative_energy_saved_kwh = 0.0
         self.cumulative_emissions_avoided_g_co2 = 0.0
 
-        # Dynamic baseline reference (updated from actual uncached runs)
+        # Reference for calculating cache-hit savings against previous uncached query
         self._last_uncached_energy_kwh = 0.0
         self._last_uncached_sci_g = 0.0
 
@@ -61,6 +68,13 @@ class GreenTracker:
 
     def _init_tracker(self):
         """Initializes and starts the underlying CodeCarbon OfflineEmissionsTracker."""
+        if not CODECARBON_AVAILABLE:
+            logger.warning(
+                "CodeCarbon is not installed in the active environment. "
+                "Hardware tracking will use fallback modeling."
+            )
+            return
+
         try:
             self._tracker = OfflineEmissionsTracker(
                 country_iso_code=self.country_iso,
@@ -70,9 +84,9 @@ class GreenTracker:
             )
             self._tracker.start()
             self._tracker_active = True
-            logger.info("CodeCarbon OfflineEmissionsTracker initialized and running.")
+            logger.info("CodeCarbon OfflineEmissionsTracker started successfully.")
         except Exception as e:
-            logger.warning("Could not initialize CodeCarbon tracker: %s. Using fallback.", e)
+            logger.warning("Could not start CodeCarbon tracker: %s. Using fallback modeling.", e)
             self._tracker = None
             self._tracker_active = False
 
@@ -83,7 +97,7 @@ class GreenTracker:
             try:
                 self._tracker.start_task(t_id)
             except Exception as e:
-                logger.debug("CodeCarbon start_task error: %s", e)
+                logger.debug("CodeCarbon start_task notice: %s", e)
         return t_id
 
     def stop_measurement(
@@ -96,48 +110,70 @@ class GreenTracker:
         Stops tracking the workload task and computes the GSF SCI metric:
             SCI = ((E * I) + M) / R
         where:
-            E = Measured energy in kWh (from CodeCarbon)
+            E = Energy in kWh (directly measured via CodeCarbon when available,
+                or explicitly labeled modeled estimate for sub-millisecond cache hits)
             I = Grid carbon intensity (gCO2eq/kWh)
-            M = Embodied carbon in gCO2eq (amortized hardware model)
+            M = Embodied carbon in gCO2eq (amortized hardware baseline model)
             R = Functional unit (1 query)
         """
         self.total_queries += 1
 
         measured_energy_kwh = 0.0
-        operational_co2_g = 0.0
-        duration_sec = fallback_duration_sec
+        raw_emissions_kg = 0.0
+        duration_sec = max(fallback_duration_sec, 0.0001)
         cpu_power_w = 0.0
         ram_power_w = 0.0
+        is_directly_measured = False
+        measurement_type = "unavailable"
+        measurement_note = ""
 
+        # Step 1: Query CodeCarbon if active
         if self._tracker and self._tracker_active:
             try:
                 emissions_data = self._tracker.stop_task(task_name)
                 if emissions_data:
-                    measured_energy_kwh = float(emissions_data.energy_consumed or 0.0)
-                    # CodeCarbon reports emissions in kg CO2eq -> convert to grams
-                    operational_co2_g = float((emissions_data.emissions or 0.0) * 1000.0)
-                    duration_sec = float(emissions_data.duration or fallback_duration_sec)
+                    raw_energy = float(emissions_data.energy_consumed or 0.0)
+                    raw_emissions_kg = float(emissions_data.emissions or 0.0)
+                    duration_sec = max(float(emissions_data.duration or duration_sec), 0.0001)
                     cpu_power_w = float(emissions_data.cpu_power or 0.0)
                     ram_power_w = float(emissions_data.ram_power or 0.0)
+
+                    if raw_energy > 0.0:
+                        measured_energy_kwh = raw_energy
+                        is_directly_measured = True
+                        measurement_type = "codecarbon_tracked"
+                        measurement_note = "Directly tracked via CodeCarbon hardware power/load monitoring."
             except Exception as e:
-                logger.warning("Error stopping CodeCarbon task '%s': %s", task_name, e)
+                logger.warning("Error reading CodeCarbon task '%s': %s", task_name, e)
 
-        # Ensure sensible lower bounds for duration
-        duration_sec = max(duration_sec, 0.0001)
+        # Step 2: Handle sub-millisecond cache hits or sensor zero-readings honestly
+        if not is_directly_measured:
+            # Model energy based on baseline idle system power
+            modeled_power_w = max(cpu_power_w + ram_power_w, IDLE_SYSTEM_POWER_WATTS)
+            measured_energy_kwh = (modeled_power_w * duration_sec) / 3600000.0
+            if is_cache_hit:
+                measurement_type = "modeled_estimate"
+                measurement_note = (
+                    "Cache hit duration fell below hardware sensor resolution threshold; "
+                    "energy is modeled using measured idle power baseline."
+                )
+            else:
+                measurement_type = "modeled_fallback"
+                measurement_note = "Sensor returned zero delta; energy estimated using processor load model."
 
-        # Fallback if tracker returned zero energy on very fast operations
-        if measured_energy_kwh <= 0.0:
-            est_power = (cpu_power_w or 4.0) + (ram_power_w or 2.0)
-            measured_energy_kwh = (est_power * duration_sec) / 3600000.0
+        # Step 3: Compute Operational Emissions (O = E * I)
+        if is_directly_measured and raw_emissions_kg > 0.0:
+            operational_co2_g = raw_emissions_kg * 1000.0
+        else:
             operational_co2_g = measured_energy_kwh * DEFAULT_GRID_INTENSITY_G_PER_KWH
 
-        # Embodied carbon (M) per GSF formula (amortized hardware lifecycle)
+        # Step 4: Compute Embodied Carbon (M) per GSF guidelines
         embodied_co2_g = EMBODIED_RATE_G_PER_SEC * duration_sec
 
-        # Total SCI score (R = 1 query)
+        # Step 5: Compute Total SCI Score (R = 1 query)
         sci_score = operational_co2_g + embodied_co2_g
 
-        # Accumulate metrics
+        # Step 6: Accumulate session counters
         if is_cache_hit:
             self.cache_hits += 1
         else:
@@ -146,11 +182,16 @@ class GreenTracker:
             self._last_uncached_sci_g = sci_score
 
         self.cumulative_energy_kwh += measured_energy_kwh
+        if is_directly_measured:
+            self.cumulative_directly_measured_kwh += measured_energy_kwh
+        else:
+            self.cumulative_modeled_energy_kwh += measured_energy_kwh
+
         self.cumulative_operational_co2_g += operational_co2_g
         self.cumulative_embodied_co2_g += embodied_co2_g
         self.cumulative_sci_g_co2 += sci_score
 
-        # Calculate savings if serving from cache compared to the latest un-cached query
+        # Step 7: Calculate savings compared to the last uncached query
         energy_saved_kwh = 0.0
         emissions_saved_g = 0.0
         if is_cache_hit and self._last_uncached_energy_kwh > 0.0:
@@ -162,9 +203,15 @@ class GreenTracker:
         return {
             "is_cache_hit": is_cache_hit,
             "duration_ms": round(duration_sec * 1000.0, 2),
+            "energy_kwh": float(f"{measured_energy_kwh:.10f}"),
             "measured_energy_kwh": float(f"{measured_energy_kwh:.10f}"),
+            "energy_is_directly_measured": is_directly_measured,
+            "energy_measurement_type": measurement_type,
+            "measurement_notes": measurement_note,
             "estimated_operational_co2_g": float(f"{operational_co2_g:.8f}"),
+            "operational_co2_g": float(f"{operational_co2_g:.8f}"),
             "assumed_embodied_co2_g": float(f"{embodied_co2_g:.8f}"),
+            "embodied_co2_g": float(f"{embodied_co2_g:.8f}"),
             "sci_score_g_co2_per_query": float(f"{sci_score:.8f}"),
             "power_telemetry": {
                 "cpu_power_watts": round(cpu_power_w, 2),
@@ -174,15 +221,23 @@ class GreenTracker:
                 "energy_saved_kwh": float(f"{energy_saved_kwh:.10f}"),
                 "emissions_avoided_g": float(f"{emissions_saved_g:.8f}"),
             },
+            "energy_saved_vs_baseline_kwh": float(f"{energy_saved_kwh:.10f}"),
+            "emissions_saved_g": float(f"{emissions_saved_g:.8f}"),
             "methodology": {
-                "energy_measurement": "CodeCarbon OfflineEmissionsTracker (actual workload task tracking)",
-                "operational_emissions": f"CodeCarbon regional grid intensity for {self.country_iso} (~{DEFAULT_GRID_INTENSITY_G_PER_KWH} gCO2eq/kWh)",
-                "embodied_carbon_model": f"GSF amortized client hardware baseline ({EMBODIED_RATE_G_PER_SEC} gCO2eq/s based on 300kg CO2eq over 4-year lifespan)",
+                "energy_source": (
+                    "Direct CodeCarbon workload task tracking"
+                    if is_directly_measured
+                    else "Explicit modeled estimate based on CPU idle/RAM power"
+                ),
+                "grid_intensity_source": f"CodeCarbon regional factor for {self.country_iso} (~{DEFAULT_GRID_INTENSITY_G_PER_KWH} gCO2eq/kWh)",
+                "embodied_carbon_basis": f"GSF amortized client device model ({EMBODIED_RATE_G_PER_SEC} gCO2eq/s based on 300kg CO2eq over 4-year lifespan)",
                 "sci_standard": "GSF SCI = ((E * I) + M) / R (R = 1 query)",
+                "measurement_boundary": "Local machine CPU and RAM execution only. Excludes network transmission and cloud datacenter PUE.",
             },
             "limitations": [
-                "CPU power on Windows is estimated by CodeCarbon using CPU TDP and utilization load (Intel RAPL/EMI interface is unavailable without admin/hypervisor support).",
-                "Embodied carbon (M) is an amortized model assumption per GSF specifications and cannot be measured dynamically by physical sensors.",
+                "Windows CPU power on this architecture uses CodeCarbon's CPU TDP and load modeling (Intel RAPL registers are restricted without admin/bare-metal hypervisor).",
+                "Sub-millisecond cache hits fall below physical sensor polling intervals and are explicitly modeled using idle baseline power.",
+                "Embodied carbon (M) is an amortized model assumption per GSF specifications and cannot be metered by hardware sensors.",
                 "Network transmission energy and upstream datacenter PUE are excluded from this local endpoint boundary.",
             ],
         }
@@ -205,14 +260,16 @@ class GreenTracker:
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
             "cache_hit_rate_pct": hit_rate,
-            "cumulative_measured_energy_kwh": float(f"{self.cumulative_energy_kwh:.10f}"),
+            "cumulative_energy_kwh": float(f"{self.cumulative_energy_kwh:.10f}"),
+            "cumulative_directly_measured_kwh": float(f"{self.cumulative_directly_measured_kwh:.10f}"),
+            "cumulative_modeled_energy_kwh": float(f"{self.cumulative_modeled_energy_kwh:.10f}"),
             "cumulative_operational_co2_g": float(f"{self.cumulative_operational_co2_g:.8f}"),
             "cumulative_embodied_co2_g": float(f"{self.cumulative_embodied_co2_g:.8f}"),
             "cumulative_sci_g_co2": float(f"{self.cumulative_sci_g_co2:.8f}"),
             "average_sci_g_co2_per_query": avg_sci,
             "cumulative_energy_saved_kwh": float(f"{self.cumulative_energy_saved_kwh:.10f}"),
             "cumulative_emissions_avoided_g_co2": float(f"{self.cumulative_emissions_avoided_g_co2:.8f}"),
-            "measurement_backend": "CodeCarbon OfflineEmissionsTracker",
+            "measurement_backend": "CodeCarbon OfflineEmissionsTracker" if self._tracker_active else "Hardware Model Fallback",
             "country_iso": self.country_iso,
         }
 
@@ -222,6 +279,8 @@ class GreenTracker:
         self.cache_hits = 0
         self.cache_misses = 0
         self.cumulative_energy_kwh = 0.0
+        self.cumulative_directly_measured_kwh = 0.0
+        self.cumulative_modeled_energy_kwh = 0.0
         self.cumulative_operational_co2_g = 0.0
         self.cumulative_embodied_co2_g = 0.0
         self.cumulative_sci_g_co2 = 0.0
@@ -238,4 +297,4 @@ class GreenTracker:
                 self._tracker_active = False
                 logger.info("CodeCarbon tracker stopped.")
             except Exception as e:
-                logger.debug("CodeCarbon shutdown exception: %s", e)
+                logger.debug("CodeCarbon shutdown notice: %s", e)

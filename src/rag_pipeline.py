@@ -132,15 +132,15 @@ class RAGPipeline:
         # ── STANDARD COMPUTATION PATH (Uncached / Baseline) ────────────────────
         if search_mode == "keyword":
             chunks = self.vector_store.keyword_search(
-                question, k, doc_type_filter, year_filter
+                question, k, doc_type_filter, year_filter, use_cache=green_mode
             )
         elif search_mode == "semantic":
             chunks = self.vector_store.semantic_search(
-                question, k, doc_type_filter, year_filter
+                question, k, doc_type_filter, year_filter, use_cache=green_mode
             )
         else:
             chunks = self.vector_store.hybrid_search(
-                question, k, doc_type_filter, year_filter
+                question, k, doc_type_filter, year_filter, use_cache=green_mode
             )
 
         # Generate answer using LLM / extractive fallback
