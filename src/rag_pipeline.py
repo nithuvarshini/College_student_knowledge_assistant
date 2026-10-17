@@ -110,15 +110,17 @@ class RAGPipeline:
             return {"error": "Empty question."}
 
         key = self._cache_key(question, search_mode, doc_type_filter, year_filter, k)
+        task_id = self.green_tracker.start_measurement()
         start_time = time.perf_counter()
 
         # ── GREEN PATH: Check LRU Response Cache ──────────────────────────────
         if green_mode and self.cache_size > 0 and key in self._response_cache:
             self._response_cache.move_to_end(key)
             duration_sec = time.perf_counter() - start_time
-            green_metrics = self.green_tracker.record_query(
-                duration_sec=duration_sec,
+            green_metrics = self.green_tracker.stop_measurement(
+                task_name=task_id,
                 is_cache_hit=True,
+                fallback_duration_sec=duration_sec,
             )
             green_metrics["green_mode"] = True
 
@@ -145,9 +147,10 @@ class RAGPipeline:
         result = self.generator.generate(question, chunks)
 
         duration_sec = time.perf_counter() - start_time
-        green_metrics = self.green_tracker.record_query(
-            duration_sec=duration_sec,
+        green_metrics = self.green_tracker.stop_measurement(
+            task_name=task_id,
             is_cache_hit=False,
+            fallback_duration_sec=duration_sec,
         )
         green_metrics["green_mode"] = green_mode
 

@@ -240,20 +240,25 @@ with tab_chat:
         st.markdown(f"**🙋 Question:** {q}")
 
         # Green telemetry badge
+        dur = gm.get('duration_ms', 0)
+        energy = gm.get('measured_energy_kwh') or gm.get('energy_kwh', 0)
+        sci = gm.get('sci_score_g_co2_per_query', 0)
+        saved = gm.get('savings_vs_last_uncached', {}).get('energy_saved_kwh') or gm.get('energy_saved_vs_baseline_kwh', 0)
+
         if is_hit:
             badge_html = f"""
             <span class="carbon-badge">⚡ Cache Hit (Green Optimized)</span>
-            <span class="carbon-badge">⏱️ {gm.get('duration_ms', 0)} ms</span>
-            <span class="carbon-badge">💡 {gm.get('energy_kwh', 0):.8f} kWh</span>
-            <span class="carbon-badge">🌍 SCI: {gm.get('sci_score_g_co2_per_query', 0):.6f} gCO₂eq</span>
-            <span class="carbon-badge">🌱 Saved: {gm.get('energy_saved_vs_baseline_kwh', 0):.8f} kWh</span>
+            <span class="carbon-badge">⏱️ {dur} ms</span>
+            <span class="carbon-badge">💡 Measured Energy: {energy:.8f} kWh</span>
+            <span class="carbon-badge">🌍 SCI Score: {sci:.6f} gCO₂eq</span>
+            <span class="carbon-badge">🌱 Energy Saved: {saved:.8f} kWh</span>
             """
         else:
             badge_html = f"""
             <span class="carbon-badge-miss">⚙️ Model Inference (Cache Miss)</span>
-            <span class="carbon-badge-miss">⏱️ {gm.get('duration_ms', 0)} ms</span>
-            <span class="carbon-badge-miss">💡 {gm.get('energy_kwh', 0):.8f} kWh</span>
-            <span class="carbon-badge-miss">🌍 SCI: {gm.get('sci_score_g_co2_per_query', 0):.6f} gCO₂eq</span>
+            <span class="carbon-badge-miss">⏱️ {dur} ms</span>
+            <span class="carbon-badge-miss">💡 Measured Energy: {energy:.8f} kWh</span>
+            <span class="carbon-badge-miss">🌍 SCI Score: {sci:.6f} gCO₂eq</span>
             """
         st.markdown(badge_html, unsafe_allow_html=True)
 
@@ -362,48 +367,54 @@ with tab_green:
         base_lat = base_gm.get("duration_ms", 1200.0)
         green_lat = green_gm.get("duration_ms", 3.0)
 
-        base_energy = base_gm.get("energy_kwh", 0.000008)
-        green_energy = green_gm.get("energy_kwh", 0.00000004)
+        base_energy = base_gm.get("measured_energy_kwh") or base_gm.get("energy_kwh", 0.000008)
+        green_energy = green_gm.get("measured_energy_kwh") or green_gm.get("energy_kwh", 0.00000004)
+
+        base_op = base_gm.get("estimated_operational_co2_g") or base_gm.get("operational_co2_g", 0.006)
+        green_op = green_gm.get("estimated_operational_co2_g") or green_gm.get("operational_co2_g", 0.00003)
+
+        base_emb = base_gm.get("assumed_embodied_co2_g") or base_gm.get("embodied_co2_g", 0.002)
+        green_emb = green_gm.get("assumed_embodied_co2_g") or green_gm.get("embodied_co2_g", 0.00001)
 
         base_sci = base_gm.get("sci_score_g_co2_per_query", 0.0085)
         green_sci = green_gm.get("sci_score_g_co2_per_query", 0.00004)
 
         lat_saved_pct = round(100 * (base_lat - green_lat) / max(base_lat, 1), 1)
-        energy_saved_pct = round(100 * (base_energy - green_energy) / max(base_energy, 1e-9), 1)
-        sci_saved_pct = round(100 * (base_sci - green_sci) / max(base_sci, 1e-9), 1)
+        energy_saved_pct = round(100 * (base_energy - green_energy) / max(base_energy, 1e-12), 1)
+        sci_saved_pct = round(100 * (base_sci - green_sci) / max(base_sci, 1e-12), 1)
 
         st.success(f"Benchmark Complete! Green optimization reduced energy & carbon intensity by **{energy_saved_pct}%**!")
 
         # Comparison metrics table
         comp_df = pd.DataFrame({
-            "Metric": [
+            "Metric Category": [
                 "Execution Latency",
-                "Energy Consumed (E)",
-                "Operational CO₂ (E × I)",
-                "Embodied Carbon (M)",
+                "Measured Energy (E) [CodeCarbon]",
+                "Estimated Operational CO₂ (E × I)",
+                "Assumed Embodied Carbon (M)",
                 "Software Carbon Intensity (SCI)",
-                "Optimization Status"
+                "Execution Type"
             ],
             "Baseline (Uncached)": [
                 f"{base_lat:.1f} ms",
                 f"{base_energy:.8f} kWh",
-                f"{base_gm.get('operational_co2_g', 0):.6f} gCO₂",
-                f"{base_gm.get('embodied_co2_g', 0):.6f} gCO₂",
+                f"{base_op:.6f} gCO₂eq",
+                f"{base_emb:.6f} gCO₂eq",
                 f"{base_sci:.6f} gCO₂eq / query",
                 "Full Vector Search + Inference"
             ],
             "Green Optimized (Cached)": [
                 f"{green_lat:.1f} ms",
                 f"{green_energy:.8f} kWh",
-                f"{green_gm.get('operational_co2_g', 0):.6f} gCO₂",
-                f"{green_gm.get('embodied_co2_g', 0):.6f} gCO₂",
+                f"{green_op:.6f} gCO₂eq",
+                f"{green_emb:.6f} gCO₂eq",
                 f"{green_sci:.6f} gCO₂eq / query",
                 "LRU Cache + Embedding Cache"
             ],
-            "Savings / Improvement": [
+            "Savings / Impact": [
                 f"⚡ {lat_saved_pct}% faster",
                 f"🌱 {energy_saved_pct}% less energy",
-                f"🌱 {sci_saved_pct}% less CO₂",
+                f"🌱 {sci_saved_pct}% less operational CO₂",
                 f"🌱 {lat_saved_pct}% runtime reduction",
                 f"🎯 {sci_saved_pct}% SCI reduction",
                 "Zero Redundant Compute"
@@ -426,6 +437,8 @@ with tab_green:
                 "SCI (gCO2eq)": [base_sci, green_sci]
             }, index=["Baseline", "Green Optimized"])
             st.bar_chart(chart_sci_data)
+
+        st.caption("ℹ️ **Methodology & Limitations:** Energy is empirically tracked using CodeCarbon task monitoring. Operational CO₂ applies CodeCarbon's India grid factor (~713 gCO₂eq/kWh). Embodied carbon (M) is an amortized model estimate per GSF guidelines (300kg CO₂eq / 4-yr lifespan). Network transmission and external data center PUE are excluded from this boundary.")
 
     st.divider()
 

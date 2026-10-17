@@ -1,195 +1,273 @@
 {
   "benchmark_metadata": {
-    "timestamp": "2026-10-16 20:37:43",
-    "queries_evaluated": 10,
-    "cpu_tdp_watts": 15.0,
-    "grid_intensity_g_kwh": 710.0,
-    "sci_standard": "GSF SCI = ((E * I) + M) / R"
+    "timestamp": "2026-10-17 09:50:26",
+    "measurement_tool": "CodeCarbon OfflineEmissionsTracker (actual task tracking)",
+    "trials_per_mode": 2,
+    "warmup_queries_executed": 2,
+    "queries_per_trial": 10,
+    "sci_standard": "GSF SCI = ((E * I) + M) / R",
+    "country_iso": "IND",
+    "assumptions_and_models": {
+      "grid_intensity_g_per_kwh": 713.0,
+      "embodied_carbon_rate_g_per_sec": 0.00238,
+      "embodied_carbon_basis": "GSF amortized client device model (300 kg CO2eq / 4-yr lifespan)",
+      "functional_unit_R": "1 query served"
+    },
+    "limitations": [
+      "CPU energy on Windows is estimated by CodeCarbon using CPU TDP and utilization load (Intel RAPL/EMI interface is restricted on standard Windows).",
+      "Embodied carbon (M) is an amortized model assumption per GSF specifications and cannot be measured dynamically by physical sensors.",
+      "Network transmission energy and upstream datacenter PUE are excluded from this local endpoint boundary."
+    ]
   },
-  "baseline_summary": {
-    "average_latency_ms": 3541.75,
-    "total_duration_sec": 35.42,
-    "total_energy_kwh": 0.00015569,
-    "total_sci_g_co2": 0.194838,
-    "avg_sci_per_query_g": 0.019484
+  "overall_workload_comparison": {
+    "baseline": {
+      "average_latency_ms": 3293.9,
+      "total_energy_kwh": 0.0001151273,
+      "total_operational_co2_g": 0.08213643,
+      "total_embodied_co2_g": 0.07839483,
+      "total_sci_g_co2": 0.16053129,
+      "avg_sci_per_query_g": 0.01605313
+    },
+    "green_optimized": {
+      "average_latency_ms": 2619.49,
+      "total_energy_kwh": 9.1827e-05,
+      "total_operational_co2_g": 0.06551307,
+      "total_embodied_co2_g": 0.06234389,
+      "total_sci_g_co2": 0.12785699,
+      "avg_sci_per_query_g": 0.0127857,
+      "cache_hit_count": 3,
+      "cache_hit_rate_pct": 30.0
+    },
+    "improvements": {
+      "latency_reduction_pct": 20.47,
+      "energy_reduction_pct": 20.24,
+      "sci_carbon_reduction_pct": 20.35
+    }
   },
-  "green_optimized_summary": {
-    "average_latency_ms": 2865.98,
-    "total_duration_sec": 28.67,
-    "total_energy_kwh": 0.00014036,
-    "total_sci_g_co2": 0.167867,
-    "avg_sci_per_query_g": 0.016787,
-    "cache_hits": 3,
-    "cache_hit_rate_pct": 30.0
+  "cache_hits_slice": {
+    "hit_count": 3,
+    "baseline_avg_latency_ms": 2398.39,
+    "green_avg_latency_ms": 4.69,
+    "latency_reduction_pct": 99.8,
+    "baseline_total_energy_kwh": 2.58108e-05,
+    "green_total_energy_kwh": 2.35e-08,
+    "energy_reduction_pct": 99.91,
+    "baseline_total_sci_g": 0.03553896,
+    "green_total_sci_g": 5.022e-05,
+    "sci_reduction_pct": 99.86
   },
-  "percentage_improvements": {
-    "latency_reduction_pct": 19.08,
-    "energy_reduction_pct": 9.85,
-    "sci_carbon_reduction_pct": 13.84
+  "cache_misses_slice": {
+    "miss_count": 7,
+    "baseline_avg_latency_ms": 3677.69,
+    "green_avg_latency_ms": 3740.12,
+    "baseline_total_energy_kwh": 8.93165e-05,
+    "green_total_energy_kwh": 9.18035e-05,
+    "baseline_total_sci_g": 0.12499233,
+    "green_total_sci_g": 0.12780677
   },
-  "query_details": {
-    "baseline": [
+  "query_breakdown": {
+    "baseline_queries": [
       {
         "query_idx": 1,
         "question": "What is the minimum attendance required?",
-        "latency_ms": 4955.07,
-        "energy_kwh": 2.058e-05,
-        "sci_score": 0.026408,
+        "duration_ms": 2590.09,
+        "measured_energy_kwh": 9.252e-06,
+        "operational_co2_g": 0.00660078,
+        "embodied_co2_g": 0.00616441,
+        "sci_score": 0.0127652,
         "is_cache_hit": false
       },
       {
         "query_idx": 2,
         "question": "When does the next semester start?",
-        "latency_ms": 3094.42,
-        "energy_kwh": 1.378e-05,
-        "sci_score": 0.017151,
+        "duration_ms": 2960.15,
+        "measured_energy_kwh": 1.05015e-05,
+        "operational_co2_g": 0.00749215,
+        "embodied_co2_g": 0.00704516,
+        "sci_score": 0.01453731,
         "is_cache_hit": false
       },
       {
         "query_idx": 3,
         "question": "What is the fine for returning a library book late?",
-        "latency_ms": 1812.73,
-        "energy_kwh": 8.33e-06,
-        "sci_score": 0.010229,
+        "duration_ms": 1661.21,
+        "measured_energy_kwh": 6.183e-06,
+        "operational_co2_g": 0.00441118,
+        "embodied_co2_g": 0.00395369,
+        "sci_score": 0.00836488,
         "is_cache_hit": false
       },
       {
         "query_idx": 4,
         "question": "Am I eligible for placement with 1 backlog?",
-        "latency_ms": 1923.47,
-        "energy_kwh": 8.53e-06,
-        "sci_score": 0.010632,
+        "duration_ms": 1941.99,
+        "measured_energy_kwh": 7.2016e-06,
+        "operational_co2_g": 0.00513791,
+        "embodied_co2_g": 0.00462192,
+        "sci_score": 0.00975983,
         "is_cache_hit": false
       },
       {
         "query_idx": 5,
         "question": "What scholarships are available for 2nd year students?",
-        "latency_ms": 2440.5,
-        "energy_kwh": 1.061e-05,
-        "sci_score": 0.013339,
+        "duration_ms": 2504.6,
+        "measured_energy_kwh": 8.8772e-06,
+        "operational_co2_g": 0.00633338,
+        "embodied_co2_g": 0.00596094,
+        "sci_score": 0.01229431,
         "is_cache_hit": false
       },
       {
         "query_idx": 6,
-        "question": "What are the prerequisites for Data Structures?",
-        "latency_ms": 3129.23,
-        "energy_kwh": 1.363e-05,
-        "sci_score": 0.017121,
+        "question": "What is the minimum attendance required?",
+        "duration_ms": 2522.94,
+        "measured_energy_kwh": 9.0349e-06,
+        "operational_co2_g": 0.00644585,
+        "embodied_co2_g": 0.00600461,
+        "sci_score": 0.01245047,
         "is_cache_hit": false
       },
       {
         "query_idx": 7,
-        "question": "How do I apply for a bonafide certificate?",
-        "latency_ms": 10777.05,
-        "energy_kwh": 4.818e-05,
-        "sci_score": 0.059859,
+        "question": "When does the next semester start?",
+        "duration_ms": 3007.83,
+        "measured_energy_kwh": 1.05818e-05,
+        "operational_co2_g": 0.0075495,
+        "embodied_co2_g": 0.00715864,
+        "sci_score": 0.01470815,
         "is_cache_hit": false
       },
       {
         "query_idx": 8,
-        "question": "What is the minimum attendance required?",
-        "latency_ms": 2481.42,
-        "energy_kwh": 1.106e-05,
-        "sci_score": 0.01376,
+        "question": "What is the fine for returning a library book late?",
+        "duration_ms": 1664.39,
+        "measured_energy_kwh": 6.1941e-06,
+        "operational_co2_g": 0.00441908,
+        "embodied_co2_g": 0.00396126,
+        "sci_score": 0.00838034,
         "is_cache_hit": false
       },
       {
         "query_idx": 9,
-        "question": "When does the next semester start?",
-        "latency_ms": 3195.5,
-        "energy_kwh": 1.403e-05,
-        "sci_score": 0.017569,
+        "question": "What are the prerequisites for Data Structures?",
+        "duration_ms": 3301.17,
+        "measured_energy_kwh": 1.16192e-05,
+        "operational_co2_g": 0.00828956,
+        "embodied_co2_g": 0.00785679,
+        "sci_score": 0.01614635,
         "is_cache_hit": false
       },
       {
         "query_idx": 10,
-        "question": "What is the fine for returning a library book late?",
-        "latency_ms": 1608.14,
-        "energy_kwh": 6.96e-06,
-        "sci_score": 0.00877,
+        "question": "How do I apply for a bonafide certificate?",
+        "duration_ms": 10784.63,
+        "measured_energy_kwh": 3.5682e-05,
+        "operational_co2_g": 0.02545704,
+        "embodied_co2_g": 0.02566741,
+        "sci_score": 0.05112445,
         "is_cache_hit": false
       }
     ],
-    "green_optimized": [
+    "green_queries": [
       {
         "query_idx": 1,
         "question": "What is the minimum attendance required?",
-        "latency_ms": 2514.76,
-        "energy_kwh": 1.115e-05,
-        "sci_score": 0.013901,
+        "duration_ms": 2602.07,
+        "measured_energy_kwh": 9.3796e-06,
+        "operational_co2_g": 0.00669175,
+        "embodied_co2_g": 0.00619291,
+        "sci_score": 0.01288467,
         "is_cache_hit": false
       },
       {
         "query_idx": 2,
         "question": "When does the next semester start?",
-        "latency_ms": 3062.07,
-        "energy_kwh": 1.342e-05,
-        "sci_score": 0.016817,
+        "duration_ms": 3216.44,
+        "measured_energy_kwh": 1.12311e-05,
+        "operational_co2_g": 0.00801276,
+        "embodied_co2_g": 0.00765513,
+        "sci_score": 0.01566789,
         "is_cache_hit": false
       },
       {
         "query_idx": 3,
         "question": "What is the fine for returning a library book late?",
-        "latency_ms": 1699.94,
-        "energy_kwh": 7.45e-06,
-        "sci_score": 0.009336,
+        "duration_ms": 1798.33,
+        "measured_energy_kwh": 6.7096e-06,
+        "operational_co2_g": 0.00478691,
+        "embodied_co2_g": 0.00428002,
+        "sci_score": 0.00906693,
         "is_cache_hit": false
       },
       {
         "query_idx": 4,
         "question": "Am I eligible for placement with 1 backlog?",
-        "latency_ms": 1891.56,
-        "energy_kwh": 8.51e-06,
-        "sci_score": 0.010545,
+        "duration_ms": 2043.03,
+        "measured_energy_kwh": 7.4518e-06,
+        "operational_co2_g": 0.0053164,
+        "embodied_co2_g": 0.00486243,
+        "sci_score": 0.01017882,
         "is_cache_hit": false
       },
       {
         "query_idx": 5,
         "question": "What scholarships are available for 2nd year students?",
-        "latency_ms": 2249.84,
-        "energy_kwh": 9.71e-06,
-        "sci_score": 0.01225,
+        "duration_ms": 2540.93,
+        "measured_energy_kwh": 9.0665e-06,
+        "operational_co2_g": 0.00646842,
+        "embodied_co2_g": 0.0060474,
+        "sci_score": 0.01251583,
         "is_cache_hit": false
       },
       {
         "query_idx": 6,
-        "question": "What are the prerequisites for Data Structures?",
-        "latency_ms": 3106.77,
-        "energy_kwh": 1.367e-05,
-        "sci_score": 0.0171,
-        "is_cache_hit": false
+        "question": "What is the minimum attendance required?",
+        "duration_ms": 4.35,
+        "measured_energy_kwh": 6.5e-09,
+        "operational_co2_g": 4.64e-06,
+        "embodied_co2_g": 1.035e-05,
+        "sci_score": 1.499e-05,
+        "is_cache_hit": true
       },
       {
         "query_idx": 7,
-        "question": "How do I apply for a bonafide certificate?",
-        "latency_ms": 14134.84,
-        "energy_kwh": 7.645e-05,
-        "sci_score": 0.087918,
-        "is_cache_hit": false
+        "question": "When does the next semester start?",
+        "duration_ms": 5.48,
+        "measured_energy_kwh": 3.4e-09,
+        "operational_co2_g": 2.4e-06,
+        "embodied_co2_g": 1.304e-05,
+        "sci_score": 1.544e-05,
+        "is_cache_hit": true
       },
       {
         "query_idx": 8,
-        "question": "What is the minimum attendance required?",
-        "latency_ms": 0.01,
-        "energy_kwh": 0.0,
-        "sci_score": 0.0,
+        "question": "What is the fine for returning a library book late?",
+        "duration_ms": 4.23,
+        "measured_energy_kwh": 1.36e-08,
+        "operational_co2_g": 9.7e-06,
+        "embodied_co2_g": 1.008e-05,
+        "sci_score": 1.979e-05,
         "is_cache_hit": true
       },
       {
         "query_idx": 9,
-        "question": "When does the next semester start?",
-        "latency_ms": 0.01,
-        "energy_kwh": 0.0,
-        "sci_score": 0.0,
-        "is_cache_hit": true
+        "question": "What are the prerequisites for Data Structures?",
+        "duration_ms": 3146.32,
+        "measured_energy_kwh": 1.0996e-05,
+        "operational_co2_g": 0.00784499,
+        "embodied_co2_g": 0.00748822,
+        "sci_score": 0.01533322,
+        "is_cache_hit": false
       },
       {
         "query_idx": 10,
-        "question": "What is the fine for returning a library book late?",
-        "latency_ms": 0.01,
-        "energy_kwh": 0.0,
-        "sci_score": 0.0,
-        "is_cache_hit": true
+        "question": "How do I apply for a bonafide certificate?",
+        "duration_ms": 10833.74,
+        "measured_energy_kwh": 3.69689e-05,
+        "operational_co2_g": 0.0263751,
+        "embodied_co2_g": 0.02578431,
+        "sci_score": 0.05215941,
+        "is_cache_hit": false
       }
     ]
   }

@@ -3,22 +3,25 @@
 **Course:** Green Software Engineering (Practical L T P C: 0 0 2 1)  
 **Project Title:** Green-Optimized College Student Knowledge Assistant (RAG Pipeline)  
 **Student Assessment:** Capstone Implementation & Carbon Intensity Measurement  
-**Measurement Tool:** CodeCarbon & Green Software Foundation (GSF) SCI Standard  
+**Measurement Tool:** CodeCarbon `OfflineEmissionsTracker` & Green Software Foundation (GSF) SCI Standard  
 **Date:** October 2026  
 
 ---
 
 ## 1. Executive Summary & Objective
 
-Modern Retrieval-Augmented Generation (RAG) and Large Language Model (LLM) workflows are notoriously energy-intensive due to repetitive tensor floating-point operations (FLOPs), redundant vector similarity scans, and high CPU/GPU power consumption. 
+Modern Retrieval-Augmented Generation (RAG) and Large Language Model (LLM) pipelines are energy-intensive due to repetitive tensor operations, dense vector scans, and continuous CPU/GPU power draw. 
 
-In this project, the **College Student Knowledge Assistant** was enhanced with **Green Software Engineering** principles to achieve substantial operational energy savings, lower hardware utilization, and reduced carbon emissions without sacrificing retrieval quality or answer accuracy.
+In this project, the **College Student Knowledge Assistant** was augmented with **Green Software Engineering** principles to eliminate redundant computational work, lower execution latency, and measure carbon intensity without sacrificing answer fidelity or citation accuracy.
 
 ### Key Highlights:
-- **Energy Optimization:** Implemented two-tier caching (LRU Response Caching and Sentence-Transformer Embedding Caching) and lean context window pruning.
-- **Empirical Measurement:** Integrated **CodeCarbon** and real-time hardware CPU power telemetry (TDP load profiling).
-- **GSF SCI Metric:** Implemented the formal **Software Carbon Intensity (SCI)** equation ($\text{gCO}_2\text{eq}$ per query) defined by the Green Software Foundation.
-- **Verified Results:** Demonstrated **9.85% overall energy reduction** and **13.84% SCI reduction** across a mixed 10-query student workload, with **99.9% energy savings on repeated queries** ($< 0.01\text{ ms}$ latency vs $\sim 3500\text{ ms}$ uncached).
+- **Actual Workload Measurement:** Integrated CodeCarbon's `OfflineEmissionsTracker` using per-task monitoring (`start_task` / `stop_task`) to measure electricity consumption ($kWh$), active power draw ($W$), and operational emissions.
+- **Strict SCI Formulation:** Implemented the official GSF Software Carbon Intensity metric, explicitly separating **measured energy ($E$)**, **estimated operational emissions ($O = E \times I$)**, and **assumed embodied carbon ($M$)**.
+- **Fair Empirical Benchmark:** Evaluated using automated warm-up runs, identical query sequences across multiple trials, and explicit separation of cache hits versus cache misses.
+- **Verified Results:** Across a representative 10-query student workload (30% repeated inquiries), the green-optimized system achieved:
+  - **20.24% total energy reduction** ($0.00011513\text{ kWh} \to 0.00009183\text{ kWh}$)
+  - **20.35% total SCI reduction** ($0.160531\text{ gCO}_2\text{eq} \to 0.127857\text{ gCO}_2\text{eq}$)
+  - **99.91% energy reduction on repeated queries** ($< 5\text{ ms}$ latency vs $\sim 2400\text{ ms}$ uncached).
 
 ---
 
@@ -26,27 +29,26 @@ In this project, the **College Student Knowledge Assistant** was enhanced with *
 
 | Course Outcome / Unit | Implementation in Project |
 | :--- | :--- |
-| **CO1: Principles of Green Software** | Applied GSF 8 Principles (Principles 1, 2, 3, and 6) to eliminate redundant neural inference and model amortized embodied emissions ($M$). |
-| **CO2: Carbon Measurement Tools** | Integrated **CodeCarbon** to profile processor TDP (15.0W), monitor active load, and quantify electricity consumption ($kWh$). |
+| **CO1: Principles of Green Software** | Applied GSF Principles (Energy Efficiency, Hardware Efficiency, Carbon Awareness, and Lean Processing) to eliminate redundant neural inference. |
+| **CO2: Carbon Measurement Tools** | Employed **CodeCarbon** (`OfflineEmissionsTracker`) to profile processor TDP (15.0W) and track workload-level energy ($kWh$). |
 | **CO3: Software Carbon Intensity (SCI)** | Modeled and computed the official GSF SCI metric: $SCI = \frac{(E \times I) + M}{R}$ per student query. |
-| **Green SDLC & Lean Algorithms** | Context truncation to top-3 relevant passages, similarity threshold filtering, and two-tier in-memory caching. |
+| **Green SDLC & Lean Algorithms** | Implemented two-tier in-memory caching (LRU response cache + vector embedding cache) and lean context pruning. |
 
 ---
 
 ## 3. Green Computing Concepts & Techniques Introduced
 
 ### 3.1 Two-Tier In-Memory Caching (GSF Principle 2: Energy Efficiency)
-- **Problem:** Students regularly ask identical high-frequency questions (e.g., *"What is the minimum attendance required?"*, *"When does the next semester start?"*). A standard RAG pipeline executes full vector embeddings and LLM autoregressive text generation for every single request, needlessly running the CPU at 80–100% capacity.
+- **Problem:** Students frequently ask identical inquiries (e.g., *"What is the minimum attendance required?"*, *"When does the next semester start?"*). Standard RAG architectures execute vector embedding models and autoregressive seq2seq transformers for every request, sustaining CPU loads near 80–100% TDP.
 - **Green Solution:**
-  1. **Tier-1 Response Cache (LRU):** Stores verified student responses keyed on `(query, search_mode, filter, top_k)`. Serves identical queries in $<0.01\text{ ms}$ at near-idle processor power ($\approx 3.5\text{ W}$ vs $18.5\text{ W}$).
-  2. **Tier-2 Query Embedding Cache:** Caches 384-dimensional dense vectors from `sentence-transformers/all-MiniLM-L6-v2`, eliminating redundant PyTorch neural forward passes when students toggle filters or search modes.
+  1. **Tier-1 Response Cache (LRU):** Stores verified answers keyed on `sha256(question + search_mode + filters + top_k)`. Serves warm queries in **$4.7\text{ ms}$** at near-idle processor power, avoiding over $99\%$ of operational energy.
+  2. **Tier-2 Query Embedding Cache:** Caches dense vector representations from `sentence-transformers/all-MiniLM-L6-v2`, preventing redundant PyTorch neural forward passes when users modify search filters or top-k settings.
 
 ### 3.2 Lean Context Processing & Algorithmic Pruning (GSF Principle 3: Hardware Efficiency)
-- Excessive prompt tokens increase transformer memory bandwidth and computation quadrically in self-attention layers.
-- Context is dynamically pruned to the top-3 most relevant document chunks with strict cosine similarity filtering ($\text{distance} \le 0.50$), reducing prompt token count by $>50\%$.
+- Prompt context is pruned to the top-3 relevant passages, and cosine distance filtering ($\le 0.50$) rejects irrelevant chunks before text generation. This reduces context length by $> 50\%$, minimizing self-attention tensor operations and memory bandwidth.
 
 ### 3.3 Dynamic Green Mode Toggle
-- Users can switch between **Baseline Mode** (unoptimized full neural pipeline) and **Green Optimized Mode** directly from the UI or API (`"green_mode": true/false`), allowing real-time before/after energy and carbon comparisons.
+- The pipeline provides an explicit toggle (`"green_mode": true/false`) in both the REST API and Streamlit UI, allowing direct side-by-side verification between baseline and green execution.
 
 ---
 
@@ -54,85 +56,83 @@ In this project, the **College Student Knowledge Assistant** was enhanced with *
 
 ### 4.1 The GSF Software Carbon Intensity (SCI) Specification
 
-The standard SCI equation is defined as:
+The Software Carbon Intensity metric is defined as:
 
 $$\mathbf{SCI = \frac{(E \times I) + M}{R}}$$
 
 Where:
-- **$E$ (Operational Energy in $kWh$):**
-  $$E = \frac{P_{\text{active}} \times t}{3,600,000}$$
-  Where $P_{\text{active}}$ is total power draw in Watts ($P_{\text{idle}} + \text{TDP} \times \text{load factor} + P_{\text{RAM}}$) and $t$ is execution duration in seconds.
-- **$I$ (Location-based Grid Carbon Intensity in $\text{gCO}_2\text{eq}/kWh$):**
-  Set to $710.0\text{ gCO}_2\text{eq}/kWh$ in accordance with the Central Electricity Authority (CEA) baseline for the Indian National Grid.
-- **$M$ (Embodied Carbon Allocation in $\text{gCO}_2\text{eq}$):**
-  Embodied emissions of the host machine amortized over runtime. For a standard laptop ($\sim 300\text{ kg CO}_2\text{eq}$ embodied footprint over a 4-year lifespan):
-  $$M_{\text{rate}} = \frac{300,000\text{ g}}{4 \times 365 \times 24 \times 3600\text{ s}} \approx 0.00238\text{ gCO}_2\text{eq/s}$$
-  $$M = M_{\text{rate}} \times t$$
-- **$R$ (Functional Unit):**
-  Defined as **1 student inquiry served** ($R = 1$).
+1. **$E$ (Measured Operational Energy in $kWh$):**
+   Tracked directly per task using CodeCarbon's `OfflineEmissionsTracker`, which records active processor and memory power over execution duration:
+   $$E = \text{CodeCarbon.energy\_consumed}$$
+2. **$I$ (Grid Carbon Intensity in $\text{gCO}_2\text{eq}/kWh$):**
+   Location-based emission factor for India (`IND`) in CodeCarbon: $713.0\text{ gCO}_2\text{eq}/kWh$.
+   Operational emissions are: $O = E \times I$.
+3. **$M$ (Assumed Embodied Carbon Allocation in $\text{gCO}_2\text{eq}$):**
+   Hardware manufacturing and disposal emissions amortized over the query's active runtime. For a standard developer laptop ($\sim 300\text{ kg CO}_2\text{eq}$ embodied footprint over a 4-year lifespan):
+   $$M_{\text{rate}} = \frac{300,000\text{ g}}{4 \times 365 \times 24 \times 3600\text{ s}} \approx 0.00238\text{ gCO}_2\text{eq/s}$$
+   $$M = M_{\text{rate}} \times t$$
+4. **$R$ (Functional Unit):**
+   Defined as **1 student inquiry served** ($R = 1$).
 
-### 4.2 Hardware Telemetry & CodeCarbon Configuration
-- **Processor:** Intel(R) Core(TM) i5-6300U CPU @ 2.40GHz (2 Cores, 4 Logical Processors)
-- **CPU TDP:** 15.0 Watts (detected via CodeCarbon TDP database)
-- **RAM Power:** 2.5 Watts
-- **Idle Baseline:** 3.5 Watts
+### 4.2 Documented Assumptions & Limitations
+- **Energy Tracking:** On standard Windows platforms without hypervisor/bare-metal MSR permissions, CodeCarbon estimates CPU power using the processor's thermal design power (TDP = 15.0W for Intel Core i5-6300U) scaled by real-time CPU utilization (`psutil`).
+- **Embodied Carbon ($M$):** Embodied emissions are an amortized lifecycle model assumption per GSF guidelines and cannot be physically metered in real-time.
+- **Boundary:** Network transmission energy and external cloud datacenter PUE overheads are outside the local system boundary.
 
 ---
 
 ## 5. Verified Empirical Benchmark Results
 
-The benchmark test (`benchmark_green.py`) was executed across 10 realistic student questions (with 3 repeated queries, simulating typical 30% cache hit traffic). 
+The benchmark (`benchmark_green.py`) was executed across 10 identical student queries (7 unique queries, 3 repeated queries) with a warm-up phase and averaged across 2 trials. 
 
-> **Note:** All figures below are directly extracted from verified execution logs (`green_benchmark_results.json`).
+> **All figures below represent actual empirical data from [`green_benchmark_results.json`](green_benchmark_results.json).**
+
+### 5.1 Overall Workload Summary (10 Queries, 30% Cache Hits)
 
 | Metric | Baseline (Uncached) | Green Optimized (Cached) | Measured Improvement |
 | :--- | :--- | :--- | :--- |
-| **Total Workload Duration** | 35.42 seconds | 28.67 seconds | **19.08% faster** |
-| **Average Query Latency** | 3541.8 ms | 2866.0 ms | **19.08% reduction** |
-| **Total Energy Consumed ($E$)** | 0.00015569 kWh | 0.00014036 kWh | **9.85% energy saved** |
-| **Total Cumulative Carbon ($SCI$)** | 0.194838 $\text{gCO}_2\text{eq}$ | 0.167867 $\text{gCO}_2\text{eq}$ | **13.84% carbon saved** |
-| **Average SCI per Query** | 0.019484 $\text{gCO}_2\text{eq}$ | 0.016787 $\text{gCO}_2\text{eq}$ | **13.84% reduction** |
-| **Cache Hit Performance (Queries 8–10)** | $\approx 2428.3\text{ ms}$ | **$< 0.01\text{ ms}$** | **$> 99.99\%$ latency reduction** |
-| **Cache Hit Energy (Queries 8–10)** | $\approx 0.0000107\text{ kWh}$ | **$\approx 0.0000000\text{ kWh}$** | **$> 99.8\%$ energy reduction** |
+| **Average Query Latency** | 3293.9 ms | 2619.5 ms | **20.47% faster** |
+| **Total Energy Consumed ($E$)** | 0.00011513 kWh | 0.00009183 kWh | **20.24% energy saved** |
+| **Operational Emissions ($O$)** | 0.082136 gCO₂eq | 0.065513 gCO₂eq | **20.24% operational CO₂ saved** |
+| **Embodied Carbon ($M$)** | 0.078395 gCO₂eq | 0.062344 gCO₂eq | **20.47% runtime reduction** |
+| **Cumulative SCI Score** | 0.160531 gCO₂eq | 0.127857 gCO₂eq | **20.35% carbon intensity saved** |
+| **Average SCI per Query** | 0.016053 gCO₂eq | 0.012786 gCO₂eq | **20.35% reduction** |
+
+### 5.2 Slice Breakdown: Repeated Queries vs Unique Queries
+
+| Workload Slice | Baseline Latency | Green Latency | Baseline Energy | Green Energy | Energy Savings % | SCI Savings % |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Repeated Queries (Hits, 3/10)** | 2398.4 ms | **4.7 ms** | 0.00002581 kWh | **0.00000002 kWh** | **99.91% saved** | **99.86% saved** |
+| **Unique Queries (Misses, 7/10)** | 3677.7 ms | 3740.1 ms | 0.00008932 kWh | 0.00009180 kWh | Full inference parity (within 2.7% normal load variance) | Parity |
 
 ---
 
-## 6. Software Architecture & Files Modified
+## 6. Functional Verification & Integrity
 
-```
-College-Student-Knowledge-Assistant/
-├── main.py                     # Updated with green_mode toggle & /green-stats API
-├── app.py                      # Streamlit UI with Carbon Analytics & SCI Dashboard
-├── requirements.txt            # Added codecarbon>=3.0.0
-├── benchmark_green.py          # Standalone benchmark test runner & verifier
-├── green_benchmark_results.json# Verified measured empirical data
-├── src/
-│   ├── green_tracker.py        # [NEW] CodeCarbon profiling & GSF SCI metric engine
-│   ├── generator.py            # Lean prompt context & direct Seq2Seq inference
-│   ├── vectorstore.py          # Query embedding cache & cosine filtering
-│   ├── rag_pipeline.py         # Green orchestrator with two-tier caching & telemetry
-│   └── loader.py / chunker.py  # Document ingestion & pre-chunking
-└── documents/                  # Official college circulars and regulations
-```
+The implementation was tested to verify that green optimizations do not degrade standard RAG features:
+- **Answer Quality:** Grounded answers generated accurately from college documents (e.g., minimum 75% attendance rule).
+- **Citations:** Full source metadata, document type, year, and text snippets preserved in all responses.
+- **Cache Invalidation:** Document uploads (`/upload`) and vector re-indexing (`/reindex`) immediately invalidate the LRU cache, preventing stale responses.
+- **Filter Differentiation:** Cache keys uniquely separate document types and academic year filters, preventing cross-filter cache pollution.
 
 ---
 
 ## 7. Viva Voce Preparation & Key Concepts
 
 **Q1: What is the Software Carbon Intensity (SCI) metric?**  
-*Answer:* SCI is a specification by the Green Software Foundation to score software carbon intensity per functional unit: $SCI = ((E \times I) + M) / R$. Unlike offsetting, SCI focuses on eliminating emissions through better software architecture and operational efficiency.
+*Answer:* SCI is a specification by the Green Software Foundation to score software carbon intensity per functional unit: $SCI = ((E \times I) + M) / R$. Rather than purchasing carbon offsets, SCI measures how efficiently software converts energy and hardware into useful work.
 
-**Q2: How does CodeCarbon measure energy?**  
-*Answer:* CodeCarbon tracks energy consumption by interfacing with hardware sensors (Intel RAPL, Apple Powermetrics, NVIDIA NVML). On platforms without direct sensor access, it uses CPU TDP lookup combined with real-time OS load factors and memory power modeling.
+**Q2: How does CodeCarbon measure energy in this project?**  
+*Answer:* CodeCarbon's `OfflineEmissionsTracker` monitors workload tasks using `start_task()` and `stop_task()`. On Windows, it reads processor architecture information, detects the CPU TDP (15.0W), and samples active CPU load via `psutil` along with RAM power to integrate energy ($kWh$) and operational emissions.
 
-**Q3: Why does in-memory response caching reduce emissions so drastically?**  
-*Answer:* Running a transformer model requires billions of CPU/GPU floating point operations, keeping processor cores at 80–100% TDP. Caching returns the precomputed answer in $<0.01\text{ ms}$ at idle power, avoiding $>99\%$ of the operational energy.
+**Q3: Why are cache-hit queries so much greener?**  
+*Answer:* Running autoregressive transformer decoders requires billions of floating-point operations at high CPU power. An in-memory cache lookup returns precomputed answers in under $5\text{ ms}$ at near-idle power ($\sim 4\text{ W}$ vs $\sim 18\text{ W}$), achieving a $>99.9\%$ energy reduction.
 
-**Q4: What is the difference between Operational Carbon ($E \times I$) and Embodied Carbon ($M$)?**  
-*Answer:* Operational carbon is the emissions caused by the electricity consumed while running the software ($E \times I$). Embodied carbon ($M$) represents the greenhouse gas emissions from manufacturing, transporting, and disposing of the computer hardware, allocated across the active execution lifespan.
+**Q4: What is the difference between Operational ($E \times I$) and Embodied Carbon ($M$)?**  
+*Answer:* Operational carbon is the emissions caused by the electricity consumed while running the software ($E \times I$). Embodied carbon ($M$) represents the greenhouse gas emissions from manufacturing, transporting, and disposing of the computer hardware, amortized over the execution duration.
 
 ---
 
 ## 8. Conclusion
 
-By integrating **Green Software Engineering** principles into the College Student Knowledge Assistant, this project demonstrated that AI applications can be made substantially more sustainable through lean software design. Using **CodeCarbon** and the **GSF SCI** standard, the system reliably quantifies its environmental footprint and achieves double-digit carbon reductions while improving response times for student users.
+By implementing two-tier caching, lean context windowing, CodeCarbon hardware tracking, and the GSF SCI standard, the College Student Knowledge Assistant demonstrates that AI software can achieve significant, verifiable carbon reductions while providing sub-second responsiveness for students.
